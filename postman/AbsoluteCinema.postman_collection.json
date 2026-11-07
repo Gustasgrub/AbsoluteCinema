@@ -1,0 +1,2497 @@
+{
+  "info": {
+    "name": "AbsoluteCinema API",
+    "description": "Visi AbsoluteCinema API metodai su testais. Paleidimas: Collection → Run (arba `npx newman run`).\nHierarchija: Studija → Filmas → Recenzija. Žetonai: access (JWT, Bearer antraštėje) + refresh (HttpOnly slapukas).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "noauth"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8000/api/v1"
+    },
+    {
+      "key": "adminToken",
+      "value": ""
+    },
+    {
+      "key": "memberToken",
+      "value": ""
+    },
+    {
+      "key": "otherMemberToken",
+      "value": ""
+    },
+    {
+      "key": "memberId",
+      "value": ""
+    },
+    {
+      "key": "studioId",
+      "value": ""
+    },
+    {
+      "key": "movieId",
+      "value": ""
+    },
+    {
+      "key": "reviewId",
+      "value": ""
+    },
+    {
+      "key": "studioEtag",
+      "value": ""
+    },
+    {
+      "key": "newEmail",
+      "value": ""
+    },
+    {
+      "key": "newUserToken",
+      "value": ""
+    },
+    {
+      "key": "newUserId",
+      "value": ""
+    },
+    {
+      "key": "sneakyEmail",
+      "value": ""
+    },
+    {
+      "key": "sneakyUserId",
+      "value": ""
+    },
+    {
+      "key": "refreshedToken",
+      "value": ""
+    },
+    {
+      "key": "twoFactorSecret",
+      "value": ""
+    },
+    {
+      "key": "twoFactorToken",
+      "value": ""
+    },
+    {
+      "key": "totpCode",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "0. Setup – log in demo users",
+      "description": "Logs in the seeded admin and two members and stores their access tokens.",
+      "item": [
+        {
+          "name": "Login as admin → 200",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@absolutecinema.test\",\n  \"password\": \"Admin123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"access token returned\", () => pm.expect(body.access_token).to.be.a(\"string\"));",
+                  "pm.collectionVariables.set(\"adminToken\", body.access_token);",
+                  "pm.test(\"role in token is admin\", () => { const p = JSON.parse(require(\"atob\")(body.access_token.split(\".\")[1].replace(/-/g, \"+\").replace(/_/g, \"/\"))); pm.expect(p.role).to.eql(\"admin\"); pm.expect(p.sub).to.be.a(\"string\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login as member Rasa → 200",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"rasa@absolutecinema.test\",\n  \"password\": \"Member123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"access token returned\", () => pm.expect(body.access_token).to.be.a(\"string\"));",
+                  "pm.collectionVariables.set(\"memberToken\", body.access_token);",
+                  "pm.collectionVariables.set(\"memberId\", body.user.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login as member Tomas → 200",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"tomas@absolutecinema.test\",\n  \"password\": \"Member123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"access token returned\", () => pm.expect(body.access_token).to.be.a(\"string\"));",
+                  "pm.collectionVariables.set(\"otherMemberToken\", body.access_token);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "1. Studios – CRUD",
+      "description": "Studio is the top of the hierarchy: Studio → Movie → Review.",
+      "item": [
+        {
+          "name": "List studios (filter + sort + pagination) → 200",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/studios?country=USA&sort=-founded_year&per_page=3&page=1",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"paginated\", () => { pm.expect(body.data.length).to.be.at.most(3); pm.expect(body.meta.per_page).to.eql(3); pm.expect(body._links.next.href).to.include(\"page=2\"); });",
+                  "pm.test(\"filtered by country\", () => body.data.forEach(s => pm.expect(s.country).to.eql(\"USA\")));",
+                  "pm.test(\"hypermedia links\", () => pm.expect(body.data[0]._links.self.href).to.include(\"/studios/\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create studio (admin) → 201",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/studios",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Lithuanian Film Studio {{$randomInt}}\",\n  \"description\": \"Test studio created by the Postman collection. It will be deleted at the end of the run.\",\n  \"country\": \"Lithuania\",\n  \"founded_year\": 1940,\n  \"headquarters\": \"Vilnius\",\n  \"website\": \"https://www.lkc.lt\",\n  \"brand_color\": \"#1E6F6A\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"201 Created\", () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Location header points to new studio\", () => pm.expect(pm.response.headers.get(\"Location\")).to.include(\"/studios/\" + body.data.id));",
+                  "pm.test(\"admin sees update/delete links\", () => { pm.expect(body.data._links).to.have.property(\"update\"); pm.expect(body.data._links).to.have.property(\"delete\"); });",
+                  "pm.collectionVariables.set(\"studioId\", body.data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get studio → 200",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/studios/{{studioId}}",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"same studio\", () => pm.expect(body.data.id).to.eql(pm.collectionVariables.get(\"studioId\")));",
+                  "pm.test(\"guest sees no update link\", () => pm.expect(body.data._links).to.not.have.property(\"update\"));",
+                  "pm.test(\"ETag header\", () => pm.response.to.have.header(\"ETag\"));",
+                  "pm.collectionVariables.set(\"studioEtag\", pm.response.headers.get(\"ETag\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get studio again with If-None-Match → 304",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "If-None-Match",
+                "value": "{{studioEtag}}"
+              }
+            ],
+            "url": "{{baseUrl}}/studios/{{studioId}}",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"304 Not Modified\", () => pm.response.to.have.status(304));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update studio – PUT (admin) → 200",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/studios/{{studioId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Lithuanian Film Studio (edited) {{$randomInt}}\",\n  \"description\": \"Updated description of the test studio. Still deleted at the end of the run.\",\n  \"country\": \"Lithuania\",\n  \"founded_year\": 1940,\n  \"headquarters\": \"Kaunas\",\n  \"website\": \"https://www.lkc.lt\",\n  \"brand_color\": \"#D93A2B\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"updated\", () => pm.expect(body.data.headquarters).to.eql(\"Kaunas\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update studio – PATCH (admin) → 200",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/studios/{{studioId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"brand_color\": \"#F0A830\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"only color changed\", () => { pm.expect(body.data.brand_color).to.eql(\"#F0A830\"); pm.expect(body.data.headquarters).to.eql(\"Kaunas\"); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Movies – CRUD",
+      "description": "Movies are scoped to their studio: /studios/{studio}/movies/{movie}.",
+      "item": [
+        {
+          "name": "Create movie in studio (admin) → 201",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/studios/{{studioId}}/movies",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Nobody Wanted to Die\",\n  \"tagline\": \"A village, four brothers and a silent forest.\",\n  \"type\": \"movie\",\n  \"genre\": \"drama\",\n  \"synopsis\": \"Test movie created by the Postman collection run, deleted at the end.\",\n  \"director\": \"Vytautas Žalakevičius\",\n  \"release_date\": \"1965-10-01\",\n  \"runtime_minutes\": 107,\n  \"age_rating\": \"16+\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"201 Created\", () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Location header\", () => pm.response.to.have.header(\"Location\"));",
+                  "pm.test(\"belongs to studio from URL\", () => pm.expect(body.data.studio_id).to.eql(pm.collectionVariables.get(\"studioId\")));",
+                  "pm.collectionVariables.set(\"movieId\", body.data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List movies of studio → 200",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/studios/{{studioId}}/movies",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"contains new movie\", () => pm.expect(body.data.map(m => m.id)).to.include(pm.collectionVariables.get(\"movieId\")));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get movie → 200",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/studios/{{studioId}}/movies/{{movieId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{memberToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"member may write a review (hypermedia)\", () => pm.expect(body.data._links).to.have.property(\"create_review\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update movie – PUT (admin) → 200",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/studios/{{studioId}}/movies/{{movieId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Nobody Wanted to Die\",\n  \"tagline\": \"Edited tagline.\",\n  \"type\": \"movie\",\n  \"genre\": \"war\",\n  \"synopsis\": \"Edited synopsis of the test movie created by Postman.\",\n  \"director\": \"Vytautas Žalakevičius\",\n  \"release_date\": \"1965-10-01\",\n  \"runtime_minutes\": 107,\n  \"age_rating\": \"16+\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"genre changed\", () => pm.expect(body.data.genre).to.eql(\"war\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Catalog: all movies filtered (genre, years, rating) → 200",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/movies?genre=sci-fi&year_from=1990&year_to=2025&min_rating=8&sort=-rating",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"all sci-fi with rating ≥ 8\", () => body.data.forEach(m => { pm.expect(m.genre).to.eql(\"sci-fi\"); pm.expect(m.average_rating).to.be.at.least(8); }));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Reviews – CRUD (hierarchical)",
+      "description": "Reviews live under /studios/{studio}/movies/{movie}/reviews – the hierarchical endpoints cover all 3 objects.",
+      "item": [
+        {
+          "name": "Create review (member) → 201",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/studios/{{studioId}}/movies/{{movieId}}/reviews",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{memberToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 9,\n  \"title\": \"A Lithuanian classic\",\n  \"body\": \"Tense, beautifully shot and still powerful decades later.\",\n  \"contains_spoilers\": false,\n  \"watched_on\": \"2026-10-01\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"201 Created\", () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"author is the token owner\", () => pm.expect(body.data.author.id).to.eql(pm.collectionVariables.get(\"memberId\")));",
+                  "pm.collectionVariables.set(\"reviewId\", body.data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List reviews of movie (hierarchical) → 200",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/studios/{{studioId}}/movies/{{movieId}}/reviews?min_rating=5&sort=-rating",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"one review\", () => pm.expect(body.meta.total).to.eql(1));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get review → 200",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/studios/{{studioId}}/movies/{{movieId}}/reviews/{{reviewId}}",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"rating\", () => pm.expect(body.data.rating).to.eql(9));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update own review – PATCH (author) → 200",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/studios/{{studioId}}/movies/{{movieId}}/reviews/{{reviewId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{memberToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 10,\n  \"contains_spoilers\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"updated\", () => { pm.expect(body.data.rating).to.eql(10); pm.expect(body.data.contains_spoilers).to.eql(true); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Movie average rating updated → 200",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/studios/{{studioId}}/movies/{{movieId}}",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"average 10\", () => pm.expect(body.data.average_rating).to.eql(10));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Dashboard, profiles, users",
+      "description": "Composite resources built from several entities.",
+      "item": [
+        {
+          "name": "Dashboard (Studio + Movie + Review + User) → 200",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/dashboard",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"composite\", () => { pm.expect(body.data.totals.studios).to.be.above(0); pm.expect(body.data.top_rated).to.be.an(\"array\"); pm.expect(body.data.latest_reviews[0]).to.have.property(\"author\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "User profile (User + Review + Movie + Studio) → 200",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/users/{{memberId}}",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"profile stats\", () => { pm.expect(body.data.stats.reviews_count).to.be.above(0); pm.expect(body.data.stats.rating_distribution).to.have.property(\"10\"); });",
+                  "pm.test(\"email is private\", () => pm.expect(body.data).to.not.have.property(\"email\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "User's reviews → 200",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/users/{{memberId}}/reviews?per_page=5",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"5 per page\", () => pm.expect(body.data.length).to.eql(5));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List users (admin) → 200",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/users?role=member",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"members only\", () => body.data.forEach(u => pm.expect(u.role).to.eql(\"member\")));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. Auth – register, refresh, logout",
+      "description": "JWT access token (15 min) + refresh token in an HttpOnly cookie (14 days).",
+      "item": [
+        {
+          "name": "Register → 201",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/register",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman Tester\",\n  \"email\": \"{{newEmail}}\",\n  \"password\": \"Secret123\",\n  \"password_confirmation\": \"Secret123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"201 Created\", () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"access token returned\", () => pm.expect(body.access_token).to.be.a(\"string\"));",
+                  "pm.collectionVariables.set(\"newUserToken\", body.access_token);",
+                  "pm.test(\"new users are members\", () => pm.expect(body.user.role).to.eql(\"member\"));",
+                  "pm.test(\"refresh cookie is HttpOnly\", () => pm.expect(pm.response.headers.get(\"Set-Cookie\")).to.match(/httponly/i));",
+                  "pm.collectionVariables.set(\"newUserId\", body.user.id);"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"newEmail\", `postman.${Date.now()}@absolutecinema.test`);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Register with role=admin is ignored → 201",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/register",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sneaky\",\n  \"email\": \"{{sneakyEmail}}\",\n  \"password\": \"Secret123\",\n  \"password_confirmation\": \"Secret123\",\n  \"role\": \"admin\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"201 Created\", () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"still a member\", () => pm.expect(body.user.role).to.eql(\"member\"));",
+                  "pm.collectionVariables.set(\"sneakyUserId\", body.user.id);"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"sneakyEmail\", `sneaky.${Date.now()}@absolutecinema.test`);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Me → 200",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/auth/me",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{newUserToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"own email visible\", () => pm.expect(body.data.email).to.eql(pm.collectionVariables.get(\"newEmail\")));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refresh (cookie) → 200",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/auth/refresh",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"access token returned\", () => pm.expect(body.access_token).to.be.a(\"string\"));",
+                  "pm.collectionVariables.set(\"refreshedToken\", body.access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Logout → 204",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/auth/logout",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{refreshedToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"204 No Content\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Old access token after logout → 401",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/auth/me",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{refreshedToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"401 \", () => pm.response.to.have.status(401));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Problem Details body\", () => { pm.expect(body.status).to.eql(401); pm.expect(body.detail).to.be.a(\"string\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refresh after logout → 401",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/auth/refresh",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"401 \", () => pm.response.to.have.status(401));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Problem Details body\", () => { pm.expect(body.status).to.eql(401); pm.expect(body.detail).to.be.a(\"string\"); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6. Two-factor authentication (bonus)",
+      "description": "TOTP 2FA: enable → confirm → login needs a code → disable.",
+      "item": [
+        {
+          "name": "Login new user → 200",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{newEmail}}\",\n  \"password\": \"Secret123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"access token returned\", () => pm.expect(body.access_token).to.be.a(\"string\"));",
+                  "pm.collectionVariables.set(\"newUserToken\", body.access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Start 2FA setup → 200",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/auth/two-factor",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{newUserToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"otpauth url\", () => pm.expect(body.data.otpauth_url).to.match(/^otpauth:\\/\\/totp\\//));",
+                  "pm.collectionVariables.set(\"twoFactorSecret\", body.data.secret);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Confirm 2FA with wrong code → 422",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/two-factor/confirm",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{newUserToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"000000\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"422 \", () => pm.response.to.have.status(422));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Problem Details body\", () => { pm.expect(body.status).to.eql(422); pm.expect(body.detail).to.be.a(\"string\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Confirm 2FA with code → 200",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/two-factor/confirm",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{newUserToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"{{totpCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"enabled\", () => pm.expect(body.data.two_factor_enabled).to.eql(true));"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// TOTP (RFC 6238) code from the secret – the same thing Google Authenticator does",
+                  "const secret = pm.collectionVariables.get(\"twoFactorSecret\");",
+                  "if (secret) {",
+                  "  const CryptoJS = require(\"crypto-js\");",
+                  "  const alphabet = \"ABCDEFGHIJKLMNOPQRSTUVWXYZ234567\";",
+                  "  let bits = \"\";",
+                  "  for (const c of secret.toUpperCase()) bits += alphabet.indexOf(c).toString(2).padStart(5, \"0\");",
+                  "  let keyHex = \"\";",
+                  "  for (let i = 0; i + 8 <= bits.length; i += 8) keyHex += parseInt(bits.substr(i, 8), 2).toString(16).padStart(2, \"0\");",
+                  "  const counter = Math.floor(Date.now() / 1000 / 30).toString(16).padStart(16, \"0\");",
+                  "  const hmac = CryptoJS.HmacSHA1(CryptoJS.enc.Hex.parse(counter), CryptoJS.enc.Hex.parse(keyHex)).toString();",
+                  "  const offset = parseInt(hmac.substr(-1), 16);",
+                  "  const code = (parseInt(hmac.substr(offset * 2, 8), 16) & 0x7fffffff) % 1000000;",
+                  "  pm.collectionVariables.set(\"totpCode\", String(code).padStart(6, \"0\"));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login now asks for a code → 200",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{newEmail}}\",\n  \"password\": \"Secret123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"2FA required, no tokens yet\", () => { pm.expect(body.two_factor_required).to.eql(true); pm.expect(body).to.not.have.property(\"access_token\"); });",
+                  "pm.collectionVariables.set(\"twoFactorToken\", body.two_factor_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2FA challenge → 200 (tokens)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/two-factor/challenge",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"two_factor_token\": \"{{twoFactorToken}}\",\n  \"code\": \"{{totpCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"access token returned\", () => pm.expect(body.access_token).to.be.a(\"string\"));",
+                  "pm.collectionVariables.set(\"newUserToken\", body.access_token);"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// TOTP (RFC 6238) code from the secret – the same thing Google Authenticator does",
+                  "const secret = pm.collectionVariables.get(\"twoFactorSecret\");",
+                  "if (secret) {",
+                  "  const CryptoJS = require(\"crypto-js\");",
+                  "  const alphabet = \"ABCDEFGHIJKLMNOPQRSTUVWXYZ234567\";",
+                  "  let bits = \"\";",
+                  "  for (const c of secret.toUpperCase()) bits += alphabet.indexOf(c).toString(2).padStart(5, \"0\");",
+                  "  let keyHex = \"\";",
+                  "  for (let i = 0; i + 8 <= bits.length; i += 8) keyHex += parseInt(bits.substr(i, 8), 2).toString(16).padStart(2, \"0\");",
+                  "  const counter = Math.floor(Date.now() / 1000 / 30).toString(16).padStart(16, \"0\");",
+                  "  const hmac = CryptoJS.HmacSHA1(CryptoJS.enc.Hex.parse(counter), CryptoJS.enc.Hex.parse(keyHex)).toString();",
+                  "  const offset = parseInt(hmac.substr(-1), 16);",
+                  "  const code = (parseInt(hmac.substr(offset * 2, 8), 16) & 0x7fffffff) % 1000000;",
+                  "  pm.collectionVariables.set(\"totpCode\", String(code).padStart(6, \"0\"));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Disable 2FA → 204",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/two-factor",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{newUserToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"{{totpCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"204 No Content\", () => pm.response.to.have.status(204));",
+                  "pm.collectionVariables.unset(\"twoFactorSecret\");"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// TOTP (RFC 6238) code from the secret – the same thing Google Authenticator does",
+                  "const secret = pm.collectionVariables.get(\"twoFactorSecret\");",
+                  "if (secret) {",
+                  "  const CryptoJS = require(\"crypto-js\");",
+                  "  const alphabet = \"ABCDEFGHIJKLMNOPQRSTUVWXYZ234567\";",
+                  "  let bits = \"\";",
+                  "  for (const c of secret.toUpperCase()) bits += alphabet.indexOf(c).toString(2).padStart(5, \"0\");",
+                  "  let keyHex = \"\";",
+                  "  for (let i = 0; i + 8 <= bits.length; i += 8) keyHex += parseInt(bits.substr(i, 8), 2).toString(16).padStart(2, \"0\");",
+                  "  const counter = Math.floor(Date.now() / 1000 / 30).toString(16).padStart(16, \"0\");",
+                  "  const hmac = CryptoJS.HmacSHA1(CryptoJS.enc.Hex.parse(counter), CryptoJS.enc.Hex.parse(keyHex)).toString();",
+                  "  const offset = parseInt(hmac.substr(-1), 16);",
+                  "  const code = (parseInt(hmac.substr(offset * 2, 8), 16) & 0x7fffffff) % 1000000;",
+                  "  pm.collectionVariables.set(\"totpCode\", String(code).padStart(6, \"0\"));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "7. Error cases – correct status codes",
+      "description": "Each request deliberately triggers an error.",
+      "item": [
+        {
+          "name": "Studio not found → 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/studios/999999",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"404 \", () => pm.response.to.have.status(404));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Problem Details body\", () => { pm.expect(body.status).to.eql(404); pm.expect(body.detail).to.be.a(\"string\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Movie not in this studio (scoping) → 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/studios/1/movies/{{movieId}}",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"404 \", () => pm.response.to.have.status(404));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Problem Details body\", () => { pm.expect(body.status).to.eql(404); pm.expect(body.detail).to.be.a(\"string\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Review not found → 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/studios/{{studioId}}/movies/{{movieId}}/reviews/999999",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"404 \", () => pm.response.to.have.status(404));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Problem Details body\", () => { pm.expect(body.status).to.eql(404); pm.expect(body.detail).to.be.a(\"string\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Unknown endpoint → 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/popcorn",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"404 \", () => pm.response.to.have.status(404));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Problem Details body\", () => { pm.expect(body.status).to.eql(404); pm.expect(body.detail).to.be.a(\"string\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Wrong method → 405",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/studios/1",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"405 \", () => pm.response.to.have.status(405));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Problem Details body\", () => { pm.expect(body.status).to.eql(405); pm.expect(body.detail).to.be.a(\"string\"); });",
+                  "pm.test(\"Allow header\", () => pm.response.to.have.header(\"Allow\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Malformed JSON → 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/studios",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"name\": \"Broken\", ",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"400 \", () => pm.response.to.have.status(400));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Problem Details body\", () => { pm.expect(body.status).to.eql(400); pm.expect(body.detail).to.be.a(\"string\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Invalid query parameters → 400",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/movies?page=abc&genre=opera&per_page=500",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"400 \", () => pm.response.to.have.status(400));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Problem Details body\", () => { pm.expect(body.status).to.eql(400); pm.expect(body.detail).to.be.a(\"string\"); });",
+                  "pm.test(\"lists bad params\", () => pm.expect(body.errors).to.have.keys(\"page\", \"genre\", \"per_page\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Not JSON body → 415",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "text/plain"
+              }
+            ],
+            "url": "{{baseUrl}}/studios",
+            "description": "Body is plain text instead of JSON.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "name=Plain text studio",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"415 \", () => pm.response.to.have.status(415));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Problem Details body\", () => { pm.expect(body.status).to.eql(415); pm.expect(body.detail).to.be.a(\"string\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Invalid studio data → 422",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/studios",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"\",\n  \"description\": \"short\",\n  \"country\": \"X\",\n  \"founded_year\": 3000,\n  \"website\": \"not-a-url\",\n  \"brand_color\": \"red\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"422 \", () => pm.response.to.have.status(422));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Problem Details body\", () => { pm.expect(body.status).to.eql(422); pm.expect(body.detail).to.be.a(\"string\"); });",
+                  "pm.test(\"field errors\", () => pm.expect(body.errors).to.include.keys(\"name\", \"description\", \"founded_year\", \"website\", \"brand_color\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Invalid review rating → 422",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/studios/{{studioId}}/movies/{{movieId}}/reviews",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{otherMemberToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 11,\n  \"title\": \"x\",\n  \"body\": \"too short\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"422 \", () => pm.response.to.have.status(422));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Problem Details body\", () => { pm.expect(body.status).to.eql(422); pm.expect(body.detail).to.be.a(\"string\"); });",
+                  "pm.test(\"rating error\", () => pm.expect(body.errors).to.have.property(\"rating\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Duplicate review → 409",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/studios/{{studioId}}/movies/{{movieId}}/reviews",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{memberToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 8,\n  \"title\": \"Second try\",\n  \"body\": \"Trying to review the same movie twice.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"409 \", () => pm.response.to.have.status(409));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Problem Details body\", () => { pm.expect(body.status).to.eql(409); pm.expect(body.detail).to.be.a(\"string\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "No token → 401",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/studios",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"No token\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"401 \", () => pm.response.to.have.status(401));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Problem Details body\", () => { pm.expect(body.status).to.eql(401); pm.expect(body.detail).to.be.a(\"string\"); });",
+                  "pm.test(\"WWW-Authenticate\", () => pm.response.to.have.header(\"WWW-Authenticate\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Forged token → 401",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIiwicm9sZSI6ImFkbWluIn0.forged-signature"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/me",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"401 \", () => pm.response.to.have.status(401));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Problem Details body\", () => { pm.expect(body.status).to.eql(401); pm.expect(body.detail).to.be.a(\"string\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Member creates studio → 403",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/studios",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{memberToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Member Studio\",\n  \"description\": \"Members cannot create studios.\",\n  \"country\": \"Lithuania\",\n  \"founded_year\": 2020\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"403 \", () => pm.response.to.have.status(403));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Problem Details body\", () => { pm.expect(body.status).to.eql(403); pm.expect(body.detail).to.be.a(\"string\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Member edits movie → 403",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/studios/{{studioId}}/movies/{{movieId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{memberToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Hacked\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"403 \", () => pm.response.to.have.status(403));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Problem Details body\", () => { pm.expect(body.status).to.eql(403); pm.expect(body.detail).to.be.a(\"string\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Member edits someone else's review → 403",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/studios/{{studioId}}/movies/{{movieId}}/reviews/{{reviewId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{otherMemberToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"403 \", () => pm.response.to.have.status(403));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Problem Details body\", () => { pm.expect(body.status).to.eql(403); pm.expect(body.detail).to.be.a(\"string\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Member deletes someone else's review → 403",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/studios/{{studioId}}/movies/{{movieId}}/reviews/{{reviewId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{otherMemberToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"403 \", () => pm.response.to.have.status(403));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Problem Details body\", () => { pm.expect(body.status).to.eql(403); pm.expect(body.detail).to.be.a(\"string\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin edits a review text → 403 (only the author can)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/studios/{{studioId}}/movies/{{movieId}}/reviews/{{reviewId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"403 \", () => pm.response.to.have.status(403));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Problem Details body\", () => { pm.expect(body.status).to.eql(403); pm.expect(body.detail).to.be.a(\"string\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Member lists all users → 403",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/users",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{memberToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"403 \", () => pm.response.to.have.status(403));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Problem Details body\", () => { pm.expect(body.status).to.eql(403); pm.expect(body.detail).to.be.a(\"string\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Member changes own role → 422",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/users/{{memberId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{memberToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"admin\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"422 \", () => pm.response.to.have.status(422));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Problem Details body\", () => { pm.expect(body.status).to.eql(422); pm.expect(body.detail).to.be.a(\"string\"); });",
+                  "pm.test(\"role prohibited\", () => pm.expect(body.errors).to.have.property(\"role\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Wrong password → 401",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"rasa@absolutecinema.test\",\n  \"password\": \"wrong-password\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"401 \", () => pm.response.to.have.status(401));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Problem Details body\", () => { pm.expect(body.status).to.eql(401); pm.expect(body.detail).to.be.a(\"string\"); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "8. Delete – clean up test data",
+      "description": "Deletes everything created above, so the collection can be run again.",
+      "item": [
+        {
+          "name": "Delete review (admin moderation) → 204",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/studios/{{studioId}}/movies/{{movieId}}/reviews/{{reviewId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"204 No Content\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Deleted review → 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/studios/{{studioId}}/movies/{{movieId}}/reviews/{{reviewId}}",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"404 \", () => pm.response.to.have.status(404));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Problem Details body\", () => { pm.expect(body.status).to.eql(404); pm.expect(body.detail).to.be.a(\"string\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete movie (admin) → 204",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/studios/{{studioId}}/movies/{{movieId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"204 No Content\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete studio (admin) → 204",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/studios/{{studioId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"204 No Content\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Deleted studio → 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/studios/{{studioId}}",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"404 \", () => pm.response.to.have.status(404));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Problem Details body\", () => { pm.expect(body.status).to.eql(404); pm.expect(body.detail).to.be.a(\"string\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete registered user (admin) → 204",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/users/{{newUserId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"204 No Content\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete second registered user (admin) → 204",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/users/{{sneakyUserId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"204 No Content\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin deletes own account → 403",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/users/1",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"403 \", () => pm.response.to.have.status(403));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Problem Details body\", () => { pm.expect(body.status).to.eql(403); pm.expect(body.detail).to.be.a(\"string\"); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

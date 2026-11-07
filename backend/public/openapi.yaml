@@ -1,0 +1,1292 @@
+openapi: 3.0.3
+info:
+  title: AbsoluteCinema API
+  version: 1.0.0
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  description: |
+    REST API for **AbsoluteCinema** – a catalogue of film studios, their movies/series and member reviews.
+
+    **Hierarchy:** `Studio → Movie → Review` (one-to-many at every level). Child resources are always
+    addressed through their parent, e.g. `/studios/1/movies/5/reviews/12`. If a child does not belong to
+    the parent in the URL, the API answers **404**.
+
+    **Roles:** guest (not logged in) · member · admin.
+
+    **Authentication:** `POST /auth/login` returns a short-lived **access token** (JWT, 15 min) in the JSON body
+    and sets a long-lived **refresh token** (14 days) in an `HttpOnly` cookie. Send the access token as
+    `Authorization: Bearer <token>`. When it expires, call `POST /auth/refresh` (the browser sends the cookie
+    automatically) to get a new one.
+
+    **Errors** use the RFC 9457 *Problem Details* format (`application/problem+json`).
+
+    **Hypermedia:** every resource contains `_links`. Action links (`update`, `delete`, `create_review`, …)
+    appear only when the current user is allowed to perform that action.
+
+    **Caching:** `GET` responses carry an `ETag`. Repeat the request with `If-None-Match` to get `304 Not Modified`.
+security:
+  - {}
+  - bearerAuth: []
+servers:
+  - url: http://localhost:8000/api/v1
+    description: Local development
+  - url: https://{host}/api/v1
+    description: Production (Railway)
+    variables:
+      host:
+        default: absolutecinema.up.railway.app
+tags:
+  - name: Auth
+    description: Registration, login, token refresh and logout
+  - name: Two-factor
+    description: Optional TOTP two-factor authentication
+  - name: Studios
+    description: Film studios – top of the hierarchy
+  - name: Movies
+    description: Movies and series of a studio
+  - name: Reviews
+    description: Member reviews of a movie
+  - name: Users
+    description: Profiles and user management
+  - name: Dashboard
+    description: Composite resources for the home page
+
+paths:
+  /:
+    get:
+      tags: [Dashboard]
+      summary: API entry point with links to the main resources
+      operationId: getRoot
+      responses:
+        '200':
+          description: Links to the main collections (HATEOAS entry point)
+          content:
+            application/json:
+              example:
+                name: AbsoluteCinema API
+                version: v1
+                documentation: http://localhost:8000/docs
+                _links:
+                  self: { href: http://localhost:8000/api/v1, method: GET }
+                  studios: { href: http://localhost:8000/api/v1/studios, method: GET }
+                  movies: { href: http://localhost:8000/api/v1/movies, method: GET }
+                  login: { href: http://localhost:8000/api/v1/auth/login, method: POST }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  # ------------------------------------------------------------------ AUTH
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Register a new member account
+      description: New accounts always get the `member` role – a `role` field in the body is ignored.
+      operationId: register
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterInput' }
+            example: { name: Rasa Kairytė, email: rasa.new@example.com, password: Secret123, password_confirmation: Secret123 }
+      responses:
+        '201':
+          description: Account created, user logged in
+          headers:
+            Location: { $ref: '#/components/headers/Location' }
+            Set-Cookie: { $ref: '#/components/headers/RefreshCookie' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TokenResponse' }
+        '400': { $ref: '#/components/responses/MalformedJson' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Log in with email and password
+      description: |
+        Returns tokens, or – if the user enabled two-factor authentication – a `two_factor_token`
+        that must be exchanged at `POST /auth/two-factor/challenge` together with a 6-digit code.
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginInput' }
+            examples:
+              admin: { summary: Seeded administrator, value: { email: admin@absolutecinema.test, password: Admin123! } }
+              member: { summary: Seeded member, value: { email: member@absolutecinema.test, password: Member123! } }
+      responses:
+        '200':
+          description: Logged in (or 2FA code required)
+          headers:
+            Set-Cookie: { $ref: '#/components/headers/RefreshCookie' }
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/TokenResponse'
+                  - $ref: '#/components/schemas/TwoFactorRequired'
+              examples:
+                tokens:
+                  summary: Normal login
+                  value:
+                    token_type: Bearer
+                    access_token: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwOi8vbG9jYWxob3N0OjgwMDAiLCJzdWIiOiIzIiwicm9sZSI6Im1lbWJlciJ9.signature
+                    expires_in: 900
+                    user: { id: 3, name: Rasa Kairytė, role: member, bio: Animation devotee., email: rasa@absolutecinema.test, two_factor_enabled: false, joined_at: '2026-11-07T14:03:30+00:00' }
+                twoFactor:
+                  summary: User has 2FA enabled
+                  value: { two_factor_required: true, two_factor_token: eyJ0eXAiOiJKV1Qi..., expires_in: 300 }
+        '400': { $ref: '#/components/responses/MalformedJson' }
+        '401':
+          description: Wrong email or password
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+              example: { type: about:blank, title: Unauthorized, status: 401, detail: Invalid email or password. }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Get a new access token using the refresh-token cookie
+      description: |
+        The refresh token is rotated: the old one is revoked and a new cookie is set.
+        Re-using an old (already rotated) refresh token revokes **all** sessions of that user.
+      operationId: refresh
+      security:
+        - refreshCookie: []
+      responses:
+        '200':
+          description: New access token (and a new refresh cookie)
+          headers:
+            Set-Cookie: { $ref: '#/components/headers/RefreshCookie' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TokenResponse' }
+        '401':
+          description: Cookie missing, refresh token expired, revoked or re-used
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+              example: { type: about:blank, title: Unauthorized, status: 401, detail: The refresh token is invalid or expired. Please log in again. }
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Log out (revokes the access token and the refresh token)
+      operationId: logout
+      security:
+        - bearerAuth: []
+      responses:
+        '204': { description: Logged out. The refresh cookie is cleared. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Current user
+      operationId: me
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: The logged-in user (including private fields)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/User' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /auth/two-factor:
+    post:
+      tags: [Two-factor]
+      summary: Start 2FA setup – returns a secret and an otpauth:// URL for a QR code
+      operationId: enableTwoFactor
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Secret generated (2FA is not active until confirmed)
+          content:
+            application/json:
+              example:
+                data:
+                  secret: JBSWY3DPEHPK3PXP
+                  otpauth_url: otpauth://totp/AbsoluteCinema:rasa%40absolutecinema.test?secret=JBSWY3DPEHPK3PXP&issuer=AbsoluteCinema&algorithm=SHA1&digits=6&period=30
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    delete:
+      tags: [Two-factor]
+      summary: Disable 2FA (requires a current code)
+      operationId: disableTwoFactor
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CodeInput' }
+            example: { code: '123456' }
+      responses:
+        '204': { description: 2FA disabled }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /auth/two-factor/confirm:
+    post:
+      tags: [Two-factor]
+      summary: Confirm the setup with a code from the authenticator app
+      operationId: confirmTwoFactor
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CodeInput' }
+            example: { code: '123456' }
+      responses:
+        '200':
+          description: 2FA enabled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/User' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /auth/two-factor/challenge:
+    post:
+      tags: [Two-factor]
+      summary: Second login step – exchange the two_factor_token and a code for tokens
+      operationId: twoFactorChallenge
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [two_factor_token, code]
+              properties:
+                two_factor_token: { type: string }
+                code: { type: string, pattern: '^[0-9]{6}$' }
+            example: { two_factor_token: eyJ0eXAiOiJKV1Qi..., code: '123456' }
+      responses:
+        '200':
+          description: Logged in
+          headers:
+            Set-Cookie: { $ref: '#/components/headers/RefreshCookie' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TokenResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  # ------------------------------------------------------------------ DASHBOARD
+  /dashboard:
+    get:
+      tags: [Dashboard]
+      summary: Home-page dashboard built from several entities (Studio + Movie + Review + User)
+      operationId: getDashboard
+      responses:
+        '200':
+          description: Totals, top-rated titles, latest reviews, studios and genre breakdown
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Dashboard' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  # ------------------------------------------------------------------ STUDIOS
+  /studios:
+    get:
+      tags: [Studios]
+      summary: List studios (filtering, sorting, pagination)
+      operationId: listStudios
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+        - { name: search, in: query, description: Part of the studio name, schema: { type: string }, example: ghibli }
+        - { name: country, in: query, schema: { type: string }, example: USA }
+        - { name: founded_from, in: query, schema: { type: integer }, example: 1980 }
+        - { name: founded_to, in: query, schema: { type: integer }, example: 2000 }
+        - name: sort
+          in: query
+          description: Field to sort by; a leading `-` means descending
+          schema: { type: string, enum: [name, -name, founded_year, -founded_year, movies, -movies, rating, -rating], default: name }
+      responses:
+        '200':
+          description: A page of studios
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/StudioPage' }
+        '400': { $ref: '#/components/responses/InvalidQuery' }
+    post:
+      tags: [Studios]
+      summary: Create a studio (admin)
+      operationId: createStudio
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/StudioInput' }
+            example: { name: Lithuanian Film Studio, description: 'The main film studio of Lithuania, founded in Vilnius.', country: Lithuania, founded_year: 1940, headquarters: Vilnius, website: 'https://www.lkc.lt', brand_color: '#1E6F6A' }
+      responses:
+        '201':
+          description: Studio created
+          headers:
+            Location: { $ref: '#/components/headers/Location' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/StudioEnvelope' }
+        '400': { $ref: '#/components/responses/MalformedJson' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /studios/{studio}:
+    parameters:
+      - $ref: '#/components/parameters/StudioId'
+    get:
+      tags: [Studios]
+      summary: Get a studio
+      operationId: getStudio
+      parameters:
+        - $ref: '#/components/parameters/IfNoneMatch'
+      responses:
+        '200':
+          description: The studio
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/StudioEnvelope' }
+        '304': { $ref: '#/components/responses/NotModified' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Studios]
+      summary: Replace a studio (admin) – all required fields must be sent
+      operationId: replaceStudio
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/StudioInput' }
+      responses:
+        '200':
+          description: Updated studio
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/StudioEnvelope' }
+        '400': { $ref: '#/components/responses/MalformedJson' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+    patch:
+      tags: [Studios]
+      summary: Partially update a studio (admin)
+      operationId: updateStudio
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/StudioPatch' }
+            example: { brand_color: '#F0A830' }
+      responses:
+        '200':
+          description: Updated studio
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/StudioEnvelope' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+    delete:
+      tags: [Studios]
+      summary: Delete a studio together with its movies and their reviews (admin)
+      operationId: deleteStudio
+      security:
+        - bearerAuth: []
+      responses:
+        '204': { description: Deleted }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ------------------------------------------------------------------ MOVIES
+  /movies:
+    get:
+      tags: [Movies]
+      summary: Catalogue of all movies and series across studios (search & filters)
+      operationId: listAllMovies
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+        - $ref: '#/components/parameters/MovieSearch'
+        - { name: studio_id, in: query, schema: { type: integer }, example: 1 }
+        - $ref: '#/components/parameters/Genre'
+        - $ref: '#/components/parameters/MovieType'
+        - $ref: '#/components/parameters/YearFrom'
+        - $ref: '#/components/parameters/YearTo'
+        - $ref: '#/components/parameters/MinRating'
+        - $ref: '#/components/parameters/MovieSort'
+      responses:
+        '200':
+          description: A page of movies
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MoviePage' }
+        '400': { $ref: '#/components/responses/InvalidQuery' }
+
+  /studios/{studio}/movies:
+    parameters:
+      - $ref: '#/components/parameters/StudioId'
+    get:
+      tags: [Movies]
+      summary: List the movies of a studio
+      operationId: listStudioMovies
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+        - $ref: '#/components/parameters/MovieSearch'
+        - $ref: '#/components/parameters/Genre'
+        - $ref: '#/components/parameters/MovieType'
+        - $ref: '#/components/parameters/YearFrom'
+        - $ref: '#/components/parameters/YearTo'
+        - $ref: '#/components/parameters/MinRating'
+        - $ref: '#/components/parameters/MovieSort'
+      responses:
+        '200':
+          description: A page of the studio's movies
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MoviePage' }
+        '400': { $ref: '#/components/responses/InvalidQuery' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      tags: [Movies]
+      summary: Add a movie or series to the studio (admin)
+      operationId: createMovie
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MovieInput' }
+            examples:
+              movie:
+                summary: A movie
+                value: { title: Nobody Wanted to Die, tagline: 'A village, four brothers and a silent forest.', type: movie, genre: drama, synopsis: 'After their father is killed, four brothers set out to find the men responsible.', director: Vytautas Žalakevičius, release_date: '1965-10-01', runtime_minutes: 107, age_rating: 16+ }
+              series:
+                summary: A series (seasons required)
+                value: { title: Chernobyl, type: series, genre: drama, synopsis: A dramatisation of the 1986 nuclear disaster., director: Craig Mazin, release_date: '2019-05-06', runtime_minutes: 65, seasons: 1, age_rating: 16+ }
+      responses:
+        '201':
+          description: Movie created
+          headers:
+            Location: { $ref: '#/components/headers/Location' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MovieEnvelope' }
+        '400': { $ref: '#/components/responses/MalformedJson' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /studios/{studio}/movies/{movie}:
+    parameters:
+      - $ref: '#/components/parameters/StudioId'
+      - $ref: '#/components/parameters/MovieId'
+    get:
+      tags: [Movies]
+      summary: Get a movie (404 if it does not belong to the studio)
+      description: For logged-in users the response also contains `my_review_id` and, if they have not reviewed it yet, a `create_review` link.
+      operationId: getMovie
+      responses:
+        '200':
+          description: The movie
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MovieEnvelope' }
+        '304': { $ref: '#/components/responses/NotModified' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Movies]
+      summary: Replace a movie (admin)
+      operationId: replaceMovie
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MovieInput' }
+      responses:
+        '200':
+          description: Updated movie
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MovieEnvelope' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+    patch:
+      tags: [Movies]
+      summary: Partially update a movie (admin). Sending `studio_id` moves it to another studio.
+      operationId: updateMovie
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MoviePatch' }
+            example: { genre: war, tagline: Edited tagline. }
+      responses:
+        '200':
+          description: Updated movie
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MovieEnvelope' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+    delete:
+      tags: [Movies]
+      summary: Delete a movie together with its reviews (admin)
+      operationId: deleteMovie
+      security:
+        - bearerAuth: []
+      responses:
+        '204': { description: Deleted }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ------------------------------------------------------------------ REVIEWS
+  /studios/{studio}/movies/{movie}/reviews:
+    parameters:
+      - $ref: '#/components/parameters/StudioId'
+      - $ref: '#/components/parameters/MovieId'
+    get:
+      tags: [Reviews]
+      summary: List the reviews of a movie (hierarchical – spans all three objects)
+      operationId: listReviews
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+        - { name: min_rating, in: query, schema: { type: integer, minimum: 1, maximum: 10 }, example: 7 }
+        - { name: max_rating, in: query, schema: { type: integer, minimum: 1, maximum: 10 } }
+        - { name: spoilers, in: query, description: Only reviews with (true) or without (false) spoilers, schema: { type: string, enum: ['true', 'false', '1', '0'] } }
+        - { name: search, in: query, description: Text in the title or body, schema: { type: string } }
+        - { name: sort, in: query, schema: { type: string, enum: [created, -created, rating, -rating], default: -created } }
+      responses:
+        '200':
+          description: A page of reviews
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReviewPage' }
+        '400': { $ref: '#/components/responses/InvalidQuery' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      tags: [Reviews]
+      summary: Write a review (member or admin). The author is the token owner.
+      operationId: createReview
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReviewInput' }
+            example: { rating: 9, title: 'Pure, unfiltered wonder', body: Every frame looks like a painting you could step into., contains_spoilers: false, watched_on: '2026-10-01' }
+      responses:
+        '201':
+          description: Review created
+          headers:
+            Location: { $ref: '#/components/headers/Location' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReviewEnvelope' }
+        '400': { $ref: '#/components/responses/MalformedJson' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: The user has already reviewed this title
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+              example: { type: about:blank, title: Conflict, status: 409, detail: You have already reviewed this title. Edit your existing review instead. }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /studios/{studio}/movies/{movie}/reviews/{review}:
+    parameters:
+      - $ref: '#/components/parameters/StudioId'
+      - $ref: '#/components/parameters/MovieId'
+      - $ref: '#/components/parameters/ReviewId'
+    get:
+      tags: [Reviews]
+      summary: Get a review
+      operationId: getReview
+      responses:
+        '200':
+          description: The review
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReviewEnvelope' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Reviews]
+      summary: Replace your own review (author only)
+      operationId: replaceReview
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReviewInput' }
+      responses:
+        '200':
+          description: Updated review
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReviewEnvelope' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+    patch:
+      tags: [Reviews]
+      summary: Partially update your own review (author only)
+      operationId: updateReview
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReviewPatch' }
+            example: { rating: 10, contains_spoilers: true }
+      responses:
+        '200':
+          description: Updated review
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReviewEnvelope' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: Not the author of this review
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+              example: { type: about:blank, title: Forbidden, status: 403, detail: You can only edit your own reviews. }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+    delete:
+      tags: [Reviews]
+      summary: Delete a review (author or admin)
+      operationId: deleteReview
+      security:
+        - bearerAuth: []
+      responses:
+        '204': { description: Deleted }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ------------------------------------------------------------------ USERS
+  /users:
+    get:
+      tags: [Users]
+      summary: List users (admin)
+      operationId: listUsers
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+        - { name: search, in: query, description: Name or email, schema: { type: string } }
+        - { name: role, in: query, schema: { type: string, enum: [member, admin] } }
+      responses:
+        '200':
+          description: A page of users
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserPage' }
+        '400': { $ref: '#/components/responses/InvalidQuery' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /users/{user}:
+    parameters:
+      - $ref: '#/components/parameters/UserId'
+    get:
+      tags: [Users]
+      summary: Public profile (built from User + Review + Movie + Studio)
+      operationId: getProfile
+      responses:
+        '200':
+          description: Profile with statistics and recent reviews
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProfileEnvelope' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Users]
+      summary: Update a profile (yourself) or a role (admin, other users only)
+      operationId: updateUser
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string, minLength: 2, maxLength: 50 }
+                bio: { type: string, maxLength: 500, nullable: true }
+                role: { type: string, enum: [member, admin], description: 'Admin only, and not for their own account' }
+            examples:
+              profile: { summary: Member edits own profile, value: { bio: Horror after midnight. } }
+              role: { summary: Admin promotes a member, value: { role: admin } }
+      responses:
+        '200':
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/User' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+    delete:
+      tags: [Users]
+      summary: Delete a user and their reviews (admin; not your own account)
+      operationId: deleteUser
+      security:
+        - bearerAuth: []
+      responses:
+        '204': { description: Deleted }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /users/{user}/reviews:
+    parameters:
+      - $ref: '#/components/parameters/UserId'
+    get:
+      tags: [Users]
+      summary: All reviews written by a user
+      operationId: listUserReviews
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+        - { name: sort, in: query, schema: { type: string, enum: [created, -created, rating, -rating], default: -created } }
+      responses:
+        '200':
+          description: A page of reviews
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReviewPage' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: 'Access token from /auth/login. Claims: iss, sub (user id), role, name, typ, iat, exp, jti. Signed with HS256.'
+    refreshCookie:
+      type: apiKey
+      in: cookie
+      name: ac_refresh_token
+      description: HttpOnly; Secure; SameSite=Strict; Path=/api/v1/auth – set by login/register/refresh.
+
+  headers:
+    Location:
+      description: URL of the created resource
+      schema: { type: string, format: uri }
+      example: http://localhost:8000/api/v1/studios/8
+    ETag:
+      description: Fingerprint of the response body; send it back in If-None-Match
+      schema: { type: string }
+      example: '"5d41402abc4b2a76b9719d911017c592"'
+    RefreshCookie:
+      description: The refresh token cookie
+      schema: { type: string }
+      example: ac_refresh_token=Jg8Nnnd8...; Max-Age=1209600; Path=/api/v1/auth; HttpOnly; SameSite=Strict; Secure
+
+  parameters:
+    StudioId: { name: studio, in: path, required: true, schema: { type: integer }, example: 1 }
+    MovieId: { name: movie, in: path, required: true, schema: { type: integer }, example: 1 }
+    ReviewId: { name: review, in: path, required: true, schema: { type: integer }, example: 1 }
+    UserId: { name: user, in: path, required: true, schema: { type: integer }, example: 3 }
+    Page: { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+    PerPage: { name: per_page, in: query, schema: { type: integer, minimum: 1, maximum: 50, default: 12 } }
+    IfNoneMatch: { name: If-None-Match, in: header, required: false, description: ETag from a previous response, schema: { type: string } }
+    MovieSearch: { name: search, in: query, description: Part of the title or director, schema: { type: string }, example: nolan }
+    Genre:
+      name: genre
+      in: query
+      schema: { $ref: '#/components/schemas/Genre' }
+    MovieType:
+      name: type
+      in: query
+      schema: { type: string, enum: [movie, series] }
+    YearFrom: { name: year_from, in: query, schema: { type: integer }, example: 2000 }
+    YearTo: { name: year_to, in: query, schema: { type: integer }, example: 2020 }
+    MinRating: { name: min_rating, in: query, description: Minimum average rating, schema: { type: number, minimum: 1, maximum: 10 }, example: 8 }
+    MovieSort:
+      name: sort
+      in: query
+      schema: { type: string, enum: [title, -title, release_date, -release_date, rating, -rating, reviews, -reviews], default: title }
+
+  responses:
+    NotModified:
+      description: The resource has not changed since the ETag in If-None-Match (empty body)
+    MalformedJson:
+      description: The body is not valid JSON or not a JSON object
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+          example: { type: about:blank, title: Bad Request, status: 400, detail: 'Malformed JSON: Syntax error.' }
+    InvalidQuery:
+      description: Invalid query parameters
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ValidationProblem' }
+          example:
+            type: about:blank
+            title: Bad Request
+            status: 400
+            detail: Some query parameters are invalid.
+            errors: { page: [The page field must be an integer.], genre: [The selected genre is invalid.] }
+    Unauthorized:
+      description: Missing, invalid, expired or revoked access token
+      headers:
+        WWW-Authenticate: { schema: { type: string }, example: Bearer }
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+          example: { type: about:blank, title: Unauthorized, status: 401, detail: The token has expired. }
+    Forbidden:
+      description: Logged in, but the role or ownership does not allow this action
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+          example: { type: about:blank, title: Forbidden, status: 403, detail: Only administrators can create studios. }
+    NotFound:
+      description: The resource does not exist (or does not belong to the parent in the URL)
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+          example: { type: about:blank, title: Not Found, status: 404, detail: 'Studio #999 was not found.' }
+    Conflict:
+      description: The request conflicts with the current state
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+          example: { type: about:blank, title: Conflict, status: 409, detail: Two-factor authentication is already enabled. }
+    UnsupportedMediaType:
+      description: The body is not sent as application/json
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+          example: { type: about:blank, title: Unsupported Media Type, status: 415, detail: 'The request body must be JSON (Content-Type: application/json).' }
+    ValidationError:
+      description: The JSON is valid, but the data is not
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ValidationProblem' }
+          example:
+            type: about:blank
+            title: Unprocessable Content
+            status: 422
+            detail: The given data was invalid.
+            errors: { rating: [The rating field must be between 1 and 10.], body: [The body field must be at least 10 characters.] }
+    TooManyRequests:
+      description: Too many attempts – try again later
+      headers:
+        Retry-After: { schema: { type: integer }, example: 42 }
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+          example: { type: about:blank, title: Too Many Requests, status: 429, detail: Too Many Attempts. }
+
+  schemas:
+    Genre:
+      type: string
+      enum: [action, adventure, animation, comedy, crime, documentary, drama, family, fantasy, horror, musical, mystery, romance, sci-fi, thriller, war]
+
+    Link:
+      type: object
+      properties:
+        href: { type: string, format: uri }
+        method: { type: string, example: GET }
+
+    Problem:
+      type: object
+      description: RFC 9457 Problem Details
+      properties:
+        type: { type: string, example: about:blank }
+        title: { type: string, example: Not Found }
+        status: { type: integer, example: 404 }
+        detail: { type: string, example: 'Studio #999 was not found.' }
+
+    ValidationProblem:
+      allOf:
+        - $ref: '#/components/schemas/Problem'
+        - type: object
+          properties:
+            errors:
+              type: object
+              additionalProperties: { type: array, items: { type: string } }
+
+    PaginationMeta:
+      type: object
+      properties:
+        current_page: { type: integer, example: 1 }
+        per_page: { type: integer, example: 12 }
+        total: { type: integer, example: 40 }
+        last_page: { type: integer, example: 4 }
+
+    PaginationLinks:
+      type: object
+      description: first/prev/next/last links keep the active filters
+      additionalProperties: { $ref: '#/components/schemas/Link' }
+      example:
+        self: { href: 'http://localhost:8000/api/v1/movies?genre=drama&page=1' }
+        first: { href: 'http://localhost:8000/api/v1/movies?genre=drama&page=1' }
+        next: { href: 'http://localhost:8000/api/v1/movies?genre=drama&page=2' }
+        last: { href: 'http://localhost:8000/api/v1/movies?genre=drama&page=3' }
+
+    # ---------- Studio
+    Studio:
+      type: object
+      properties:
+        id: { type: integer, example: 1 }
+        name: { type: string, example: Studio Ghibli }
+        description: { type: string, example: 'Japanese animation studio co-founded by Hayao Miyazaki, Isao Takahata and Toshio Suzuki.' }
+        country: { type: string, example: Japan }
+        founded_year: { type: integer, example: 1985 }
+        headquarters: { type: string, nullable: true, example: 'Koganei, Tokyo' }
+        website: { type: string, nullable: true, example: 'https://www.ghibli.jp' }
+        brand_color: { type: string, example: '#2F6B4F' }
+        movies_count: { type: integer, example: 6 }
+        reviews_count: { type: integer, example: 17 }
+        average_rating: { type: number, nullable: true, example: 8.8 }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        _links:
+          type: object
+          additionalProperties: { $ref: '#/components/schemas/Link' }
+          example:
+            self: { href: http://localhost:8000/api/v1/studios/1, method: GET }
+            movies: { href: http://localhost:8000/api/v1/studios/1/movies, method: GET }
+            collection: { href: http://localhost:8000/api/v1/studios, method: GET }
+            update: { href: http://localhost:8000/api/v1/studios/1, method: PUT }
+            delete: { href: http://localhost:8000/api/v1/studios/1, method: DELETE }
+            create_movie: { href: http://localhost:8000/api/v1/studios/1/movies, method: POST }
+    StudioInput:
+      type: object
+      required: [name, description, country, founded_year]
+      properties:
+        name: { type: string, minLength: 2, maxLength: 100, description: Unique }
+        description: { type: string, minLength: 10, maxLength: 2000 }
+        country: { type: string, minLength: 2, maxLength: 60 }
+        founded_year: { type: integer, minimum: 1850 }
+        headquarters: { type: string, maxLength: 100, nullable: true }
+        website: { type: string, format: uri, nullable: true }
+        brand_color: { type: string, pattern: '^#[0-9A-Fa-f]{6}$', example: '#1E6F6A' }
+    StudioPatch:
+      type: object
+      description: Any subset of StudioInput fields
+      properties:
+        name: { type: string }
+        description: { type: string }
+        country: { type: string }
+        founded_year: { type: integer }
+        headquarters: { type: string, nullable: true }
+        website: { type: string, nullable: true }
+        brand_color: { type: string }
+    StudioEnvelope:
+      type: object
+      properties:
+        data: { $ref: '#/components/schemas/Studio' }
+    StudioPage:
+      type: object
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/Studio' } }
+        meta: { $ref: '#/components/schemas/PaginationMeta' }
+        _links: { $ref: '#/components/schemas/PaginationLinks' }
+
+    # ---------- Movie
+    Movie:
+      type: object
+      properties:
+        id: { type: integer, example: 1 }
+        studio_id: { type: integer, example: 1 }
+        title: { type: string, example: Spirited Away }
+        tagline: { type: string, nullable: true, example: A bathhouse for spirits. A girl who forgot her name. }
+        type: { type: string, enum: [movie, series] }
+        genre: { $ref: '#/components/schemas/Genre' }
+        synopsis: { type: string, example: Ten-year-old Chihiro wanders into a spirit world where her parents are turned into pigs. }
+        director: { type: string, example: Hayao Miyazaki }
+        release_date: { type: string, format: date, example: '2001-07-20' }
+        release_year: { type: integer, example: 2001 }
+        runtime_minutes: { type: integer, example: 125 }
+        seasons: { type: integer, nullable: true, example: null }
+        age_rating: { type: string, enum: [ALL, 7+, 13+, 16+, 18+], example: 7+ }
+        poster_url: { type: string, nullable: true }
+        average_rating: { type: number, nullable: true, example: 9.5 }
+        reviews_count: { type: integer, example: 4 }
+        studio:
+          type: object
+          properties:
+            id: { type: integer, example: 1 }
+            name: { type: string, example: Studio Ghibli }
+            brand_color: { type: string, example: '#2F6B4F' }
+        my_review_id: { type: integer, nullable: true, description: 'Only in GET /studios/{studio}/movies/{movie} for logged-in users' }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        _links:
+          type: object
+          additionalProperties: { $ref: '#/components/schemas/Link' }
+          example:
+            self: { href: http://localhost:8000/api/v1/studios/1/movies/1, method: GET }
+            studio: { href: http://localhost:8000/api/v1/studios/1, method: GET }
+            reviews: { href: http://localhost:8000/api/v1/studios/1/movies/1/reviews, method: GET }
+            create_review: { href: http://localhost:8000/api/v1/studios/1/movies/1/reviews, method: POST }
+    MovieInput:
+      type: object
+      required: [title, type, genre, synopsis, director, release_date, runtime_minutes, age_rating]
+      properties:
+        title: { type: string, maxLength: 150 }
+        tagline: { type: string, maxLength: 200, nullable: true }
+        type: { type: string, enum: [movie, series] }
+        genre: { $ref: '#/components/schemas/Genre' }
+        synopsis: { type: string, minLength: 10, maxLength: 3000 }
+        director: { type: string, minLength: 2, maxLength: 120, description: For series – the creator }
+        release_date: { type: string, format: date }
+        runtime_minutes: { type: integer, minimum: 1, maximum: 999, description: For series – average episode length }
+        seasons: { type: integer, minimum: 1, maximum: 99, nullable: true, description: 'Required for series, must be empty for movies' }
+        age_rating: { type: string, enum: [ALL, 7+, 13+, 16+, 18+] }
+        poster_url: { type: string, format: uri, nullable: true }
+        studio_id: { type: integer, description: Only on update – moves the movie to another studio }
+    MoviePatch:
+      type: object
+      description: Any subset of MovieInput fields
+      properties:
+        title: { type: string }
+        tagline: { type: string, nullable: true }
+        type: { type: string, enum: [movie, series] }
+        genre: { $ref: '#/components/schemas/Genre' }
+        synopsis: { type: string }
+        director: { type: string }
+        release_date: { type: string, format: date }
+        runtime_minutes: { type: integer }
+        seasons: { type: integer, nullable: true }
+        age_rating: { type: string }
+        poster_url: { type: string, nullable: true }
+        studio_id: { type: integer }
+    MovieEnvelope:
+      type: object
+      properties:
+        data: { $ref: '#/components/schemas/Movie' }
+    MoviePage:
+      type: object
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/Movie' } }
+        meta: { $ref: '#/components/schemas/PaginationMeta' }
+        _links: { $ref: '#/components/schemas/PaginationLinks' }
+
+    # ---------- Review
+    Review:
+      type: object
+      properties:
+        id: { type: integer, example: 4 }
+        movie_id: { type: integer, example: 1 }
+        rating: { type: integer, minimum: 1, maximum: 10, example: 9 }
+        title: { type: string, example: A love story without a single kiss }
+        body: { type: string, example: 'Tender, strange and completely unforgettable.' }
+        contains_spoilers: { type: boolean, example: true }
+        watched_on: { type: string, format: date, nullable: true, example: '2026-03-15' }
+        author:
+          type: object
+          properties:
+            id: { type: integer, example: 9 }
+            name: { type: string, example: Emilija Stankutė }
+        movie:
+          type: object
+          properties:
+            id: { type: integer }
+            title: { type: string }
+            type: { type: string }
+            genre: { type: string }
+            release_year: { type: integer }
+            poster_url: { type: string, nullable: true }
+            studio_id: { type: integer }
+            studio: { type: object, nullable: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        _links:
+          type: object
+          additionalProperties: { $ref: '#/components/schemas/Link' }
+          example:
+            self: { href: http://localhost:8000/api/v1/studios/1/movies/1/reviews/4, method: GET }
+            movie: { href: http://localhost:8000/api/v1/studios/1/movies/1, method: GET }
+            author: { href: http://localhost:8000/api/v1/users/9, method: GET }
+            update: { href: http://localhost:8000/api/v1/studios/1/movies/1/reviews/4, method: PUT }
+            delete: { href: http://localhost:8000/api/v1/studios/1/movies/1/reviews/4, method: DELETE }
+    ReviewInput:
+      type: object
+      required: [rating, title, body]
+      properties:
+        rating: { type: integer, minimum: 1, maximum: 10 }
+        title: { type: string, minLength: 2, maxLength: 120 }
+        body: { type: string, minLength: 10, maxLength: 5000 }
+        contains_spoilers: { type: boolean, default: false }
+        watched_on: { type: string, format: date, nullable: true, description: Not in the future }
+    ReviewPatch:
+      type: object
+      properties:
+        rating: { type: integer, minimum: 1, maximum: 10 }
+        title: { type: string }
+        body: { type: string }
+        contains_spoilers: { type: boolean }
+        watched_on: { type: string, format: date, nullable: true }
+    ReviewEnvelope:
+      type: object
+      properties:
+        data: { $ref: '#/components/schemas/Review' }
+    ReviewPage:
+      type: object
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/Review' } }
+        meta: { $ref: '#/components/schemas/PaginationMeta' }
+        _links: { $ref: '#/components/schemas/PaginationLinks' }
+
+    # ---------- User & auth
+    User:
+      type: object
+      properties:
+        id: { type: integer, example: 3 }
+        name: { type: string, example: Rasa Kairytė }
+        role: { type: string, enum: [member, admin], example: member }
+        bio: { type: string, nullable: true }
+        email: { type: string, description: Only for the user themself or an admin }
+        two_factor_enabled: { type: boolean, description: Only for the user themself or an admin }
+        reviews_count: { type: integer, example: 15 }
+        joined_at: { type: string, format: date-time }
+        _links:
+          type: object
+          additionalProperties: { $ref: '#/components/schemas/Link' }
+    UserPage:
+      type: object
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/User' } }
+        meta: { $ref: '#/components/schemas/PaginationMeta' }
+        _links: { $ref: '#/components/schemas/PaginationLinks' }
+    ProfileEnvelope:
+      type: object
+      properties:
+        data:
+          allOf:
+            - $ref: '#/components/schemas/User'
+            - type: object
+              properties:
+                stats:
+                  type: object
+                  properties:
+                    reviews_count: { type: integer, example: 15 }
+                    average_rating: { type: number, nullable: true, example: 8.9 }
+                    favorite_genre: { type: string, nullable: true, example: comedy }
+                    rating_distribution:
+                      type: object
+                      description: How many times each score 1–10 was given
+                      example: { '1': 0, '2': 0, '3': 0, '4': 0, '5': 0, '6': 0, '7': 2, '8': 3, '9': 7, '10': 3 }
+                recent_reviews: { type: array, items: { $ref: '#/components/schemas/Review' } }
+    Dashboard:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            totals:
+              type: object
+              example: { studios: 7, movies: 29, series: 11, reviews: 120, members: 10 }
+            top_rated: { type: array, items: { $ref: '#/components/schemas/Movie' } }
+            latest_reviews: { type: array, items: { $ref: '#/components/schemas/Review' } }
+            studios: { type: array, items: { $ref: '#/components/schemas/Studio' } }
+            genres:
+              type: array
+              items:
+                type: object
+                properties:
+                  genre: { type: string, example: comedy }
+                  titles: { type: integer, example: 8 }
+            _links:
+              type: object
+              additionalProperties: { $ref: '#/components/schemas/Link' }
+    RegisterInput:
+      type: object
+      required: [name, email, password, password_confirmation]
+      properties:
+        name: { type: string, minLength: 2, maxLength: 50 }
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8, description: Must contain letters and numbers }
+        password_confirmation: { type: string }
+    LoginInput:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string }
+    CodeInput:
+      type: object
+      required: [code]
+      properties:
+        code: { type: string, pattern: '^[0-9]{6}$', description: 6-digit code from the authenticator app }
+    TokenResponse:
+      type: object
+      properties:
+        token_type: { type: string, example: Bearer }
+        access_token: { type: string, description: 'JWT (HS256). Payload: iss, sub, role, name, typ, iat, exp, jti' }
+        expires_in: { type: integer, description: Seconds until the access token expires, example: 900 }
+        user: { $ref: '#/components/schemas/User' }
+    TwoFactorRequired:
+      type: object
+      properties:
+        two_factor_required: { type: boolean, example: true }
+        two_factor_token: { type: string, description: Short-lived token for POST /auth/two-factor/challenge }
+        expires_in: { type: integer, example: 300 }

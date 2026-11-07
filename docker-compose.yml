@@ -1,0 +1,59 @@
+# Visa AbsoluteCinema sistema viena komanda:
+#   docker compose up --build
+# Svetainė:  http://localhost:8080      (React + Caddy, /api persiunčiama backend'ui)
+# API:       http://localhost:8000/api/v1   (tiesiogiai – Postman'ui)
+# MySQL:     localhost:3307  (naudotojas cinema / cinema)
+#
+# DĖMESIO: APP_KEY ir JWT_SECRET čia skirti TIK lokaliam demonstravimui.
+# Produkcijoje (Railway) sugeneruokite naujus: php artisan key:generate --show ir php artisan jwt:secret --show
+
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: absolutecinema
+      MYSQL_USER: cinema
+      MYSQL_PASSWORD: cinema
+      MYSQL_ROOT_PASSWORD: root
+    volumes:
+      - mysql-data:/var/lib/mysql
+    ports:
+      - "3307:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-ucinema", "-pcinema"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  backend:
+    build: ./backend
+    environment:
+      APP_KEY: "base64:yTTKltsRwKkL93PlMt9Ooa5tpKUpPBeLkjehtNxJsno="
+      APP_URL: http://localhost:8080
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: absolutecinema
+      DB_USERNAME: cinema
+      DB_PASSWORD: cinema
+      JWT_SECRET: "0ea61c3f361fd4ff6ad76382d2081ff3312fea771aa562f5af885b766bdabf78"
+      JWT_COOKIE_SECURE: "false"
+      CORS_ALLOWED_ORIGINS: http://localhost:8080,http://localhost:5173
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "8000:8080"
+    restart: on-failure
+
+  frontend:
+    build: ./frontend
+    environment:
+      API_UPSTREAM: http://backend:8080
+    depends_on:
+      - backend
+    ports:
+      - "8080:8080"
+
+volumes:
+  mysql-data:

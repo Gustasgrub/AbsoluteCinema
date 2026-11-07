@@ -1,0 +1,116 @@
+/*
+ * VISOS ANIMACIJOS VIENOJE VIETOJE.
+ * Kur naudojamos:
+ *  - reel-in ........... kiekvienas naujas puslapis "įvažiuoja" (layout.css → .site-main)
+ *  - bulbs ............. švieslentės lemputės bėga ratu (pages.css → .marquee)
+ *  - flicker ........... neoninis užrašo mirgėjimas (.marquee__title, 404 puslapis)
+ *  - odometer .......... skaitliukų skaitmenys prasisuka (.counter__reel)
+ *  - projector-sweep ... šviesos ruožas per plakatą užvedus pelę (.movie-card)
+ *  - clap .............. klaketė "užsitrenkia" atsidarant modaliniam langui (.clapper__stick)
+ *  - leader-spin/count . krovimo animacija 3-2-1 (.leader)
+ *  - toast-in .......... pranešimas įslysta iš dešinės
+ *  - grow .............. profilio histogramos stulpeliai išauga
+ */
+
+.site-main > * {
+  animation: reel-in 0.55s var(--ease) both;
+}
+
+@keyframes reel-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+    filter: brightness(1.6) contrast(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+@keyframes bulbs {
+  0% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
+
+@keyframes flicker {
+  0%, 18%, 22%, 25%, 53%, 57%, 100% {
+    opacity: 1;
+  }
+  20%, 24%, 55% {
+    opacity: 0.55;
+  }
+}
+
+@keyframes odometer {
+  from {
+    transform: translateY(0);
+  }
+}
+
+@keyframes projector-sweep {
+  from { transform: translateX(-120%); }
+  to { transform: translateX(120%); }
+}
+
+@keyframes clap {
+  0% { transform: rotate(-24deg); }
+  70% { transform: rotate(2deg); }
+  100% { transform: rotate(0deg); }
+}
+
+@keyframes leader-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes leader-count {
+  0% { opacity: 1; }
+  33.33% { opacity: 0; }
+}
+
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.97);
+  }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(40px);
+  }
+}
+
+@keyframes slow-pan {
+  from { transform: scale(1.03) translateX(0); }
+  to { transform: scale(1.12) translateX(-3%); }
+}
+
+@keyframes grow {
+  from { transform: scaleY(0); }
+}
+
+@keyframes drop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+/* Naudotojams, kurie sistemoje išjungė animacijas – rodome be judesio */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

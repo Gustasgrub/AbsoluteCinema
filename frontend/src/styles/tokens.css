@@ -1,0 +1,47 @@
+/*
+ * Dizaino kintamieji: spalvų paletė, šriftai, tarpai.
+ * Idėja – kino festivalio programėlė: šiltas popierius, juodas rašalas,
+ * signalinė raudona (uždanga) ir gintarinės švieslentės lemputės.
+ */
+:root {
+  /* Spalvos */
+  --paper: #f2eadc;
+  --paper-2: #e9dfcc;
+  --paper-3: #d9ccb3;
+  --cream: #fbf6ec;
+  --ink: #17130e;
+  --ink-2: #3b332a;
+  --ink-3: #6b5f51;
+  --red: #d7372a;
+  --red-deep: #9e2a20;
+  --amber: #f2a93b;
+  --amber-soft: #f7d797;
+  --teal: #1f6f68;
+
+  /* Šriftai (įtraukti per Google Fonts index.html faile) */
+  --font-display: 'Big Shoulders Display', 'Arial Narrow', 'Roboto Condensed', sans-serif;
+  --font-body: 'Instrument Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-serif: 'Instrument Serif', Georgia, 'Times New Roman', serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+
+  /* Tarpai – viskas lygiuojama į 8px tinklelį */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --space-9: 96px;
+
+  /* Rėmeliai ir šešėliai – "atspausdinto" plakato stilius (be suliejimo) */
+  --line: 2px solid var(--ink);
+  --shadow: 4px 4px 0 var(--ink);
+  --shadow-lg: 8px 8px 0 var(--ink);
+  --radius: 4px;
+
+  --container: 1200px;
+  --gutter: 24px;
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+}

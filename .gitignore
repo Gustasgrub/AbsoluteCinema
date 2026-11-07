@@ -1,0 +1,6 @@
+# Bendros taisyklės (backend/ ir frontend/ turi savo .gitignore)
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.log

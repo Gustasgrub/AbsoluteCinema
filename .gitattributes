@@ -1,0 +1,6 @@
+# Skriptai ir konfigūracija konteineriams visada su LF eilučių pabaigomis
+* text=auto eol=lf
+*.sh text eol=lf
+Caddyfile text eol=lf
+*.jpg binary
+*.png binary

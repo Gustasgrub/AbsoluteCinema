@@ -1,0 +1,25 @@
+{
+	admin off
+	auto_https off
+	servers {
+		# Railway (ar kitas proxy priekyje) perduoda tikrąjį protokolą X-Forwarded-Proto antrašte
+		trusted_proxies static private_ranges
+	}
+}
+
+:{$PORT:8080} {
+	encode zstd gzip
+
+	# API, jo dokumentacija ir sveikatos patikra – persiunčiama Laravel backend'ui
+	@backend path /api/* /docs /openapi.yaml /up
+	handle @backend {
+		reverse_proxy {$API_UPSTREAM}
+	}
+
+	# Visa kita – React programa. Nežinomi adresai (pvz. /studios/1) grąžina index.html
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}
