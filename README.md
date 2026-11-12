@@ -272,6 +272,8 @@ Filmų plakatai generuojami SVG pagal žanrą (arba rodomas `poster_url` paveiks
 
 ## 10. Diegimas (Render)
 
+Veikianti sistema: **https://absolutecinema-6z00.onrender.com** (API: `https://absolutecinema-api-1qsh.onrender.com/api/v1`).
+
 Visa sistema aprašyta [`render.yaml`](render.yaml) (Render Blueprint): du nemokami Docker web servisai ir nemokama PostgreSQL.
 
 1. Įkelkite projektą į GitHub.

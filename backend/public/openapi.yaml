@@ -33,7 +33,7 @@ servers:
     description: Production (Render)
     variables:
       host:
-        default: absolutecinema-api.onrender.com
+        default: absolutecinema-api-1qsh.onrender.com
 tags:
   - name: Auth
     description: Registration, login, token refresh and logout

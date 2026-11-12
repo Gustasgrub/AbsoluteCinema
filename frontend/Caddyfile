@@ -13,12 +13,9 @@
 	# API, jo dokumentacija ir sveikatos patikra – persiunčiama Laravel backend'ui
 	@backend path /api/* /docs /openapi.yaml /up
 	handle @backend {
-		reverse_proxy {$API_UPSTREAM} {
-			# Render API servisą randa pagal Host antraštę, todėl siunčiame jo paties adresą,
-			# o svetainės adresą perduodame X-Forwarded-Host (Laravel pagal jį kuria nuorodas)
-			header_up Host {upstream_hostport}
-			header_up X-Forwarded-Host {host}
-		}
+		# Kai API adresas https:// (Render), Caddy pats nustato tinkamą Host antraštę;
+		# svetainės adresas perduodamas X-Forwarded-Host antrašte (pagal jį Laravel kuria nuorodas)
+		reverse_proxy {$API_UPSTREAM}
 	}
 
 	# Visa kita – React programa. Nežinomi adresai (pvz. /studios/1) grąžina index.html

@@ -26,6 +26,10 @@ ENV APP_ENV=production \
     QUEUE_CONNECTION=sync \
     PORT=8080
 
+# Atvaizde frankenphp turi teisę jungtis prie 80 prievado (cap_net_bind_service). Render konteineriuose tokios
+# teisės draudžiamos ("Operation not permitted"), o mums jos nereikia – klausomės PORT (Render: 10000)
+RUN setcap -r /usr/local/bin/frankenphp
+
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint
 RUN chmod +x /usr/local/bin/entrypoint
 
