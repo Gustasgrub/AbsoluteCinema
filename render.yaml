@@ -11,9 +11,9 @@ services:
     runtime: docker
     plan: free
     region: frankfurt
-    rootDir: backend
-    dockerContext: ./backend
-    dockerfilePath: ./backend/Dockerfile
+    rootDir: backend               # keliai žemiau – nuo rootDir
+    dockerContext: .
+    dockerfilePath: ./Dockerfile
     healthCheckPath: /up
     envVars:
       - key: APP_KEY                 # php artisan key:generate --show
@@ -39,8 +39,8 @@ services:
     plan: free
     region: frankfurt
     rootDir: frontend
-    dockerContext: ./frontend
-    dockerfilePath: ./frontend/Dockerfile
+    dockerContext: .
+    dockerfilePath: ./Dockerfile
     envVars:
       - key: API_UPSTREAM            # API serviso adresas, pvz. https://absolutecinema-api.onrender.com
         sync: false
