@@ -18,8 +18,6 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\ValidationException;
-use PragmaRX\Google2FA\Google2FA;
 
 /**
  * Registracija, prisijungimas, žetonų atnaujinimas ir atsijungimas.
@@ -46,7 +44,7 @@ class AuthController extends Controller
             ->header('Location', Link::url("users/{$user->id}"));
     }
 
-    // POST /auth/login → 200 su žetonais, 401 jei blogi duomenys, arba 2FA iššūkis
+    // POST /auth/login → 200 su žetonais, 401 jei blogi duomenys
     public function login(LoginRequest $request): JsonResponse
     {
         $user = User::where('email', $request->validated('email'))->first();
@@ -55,40 +53,7 @@ class AuthController extends Controller
             throw new AuthenticationException('Invalid email or password.');
         }
 
-        // Jei įjungta 2FA – žetonų dar neduodame, prašome kodo iš autentifikatoriaus programėlės
-        if ($user->hasTwoFactorEnabled()) {
-            return response()->json([
-                'two_factor_required' => true,
-                'two_factor_token' => $this->jwt->createTwoFactorToken($user),
-                'expires_in' => config('jwt.two_factor_ttl') * 60,
-            ]);
-        }
-
         $this->refreshTokens->pruneExpired();
-
-        return $this->respondWithTokens($user, $request);
-    }
-
-    // POST /auth/two-factor/challenge {two_factor_token, code} → 200 su žetonais
-    public function twoFactorChallenge(Request $request, Google2FA $google2fa): JsonResponse
-    {
-        $data = $request->validate([
-            'two_factor_token' => ['required', 'string'],
-            'code' => ['required', 'digits:6'],
-        ]);
-
-        try {
-            $claims = $this->jwt->decode($data['two_factor_token'], JwtService::TYPE_TWO_FACTOR);
-        } catch (InvalidTokenException) {
-            throw new AuthenticationException('Your login attempt expired. Please enter your password again.');
-        }
-
-        $user = User::find($claims->sub);
-
-        if (! $user || ! $user->hasTwoFactorEnabled()
-            || ! $google2fa->verifyKey($user->two_factor_secret, (string) $data['code'])) {
-            throw ValidationException::withMessages(['code' => 'The authentication code is invalid.']);
-        }
 
         return $this->respondWithTokens($user, $request);
     }
@@ -120,13 +85,7 @@ class AuthController extends Controller
         return response()->noContent()->withCookie($this->refreshTokens->forgetCookie());
     }
 
-    // GET /auth/me → 200 – prisijungusio naudotojo duomenys
-    public function me(Request $request): JsonResponse
-    {
-        return response()->json(['data' => new UserResource($request->user()->loadCount('reviews'))]);
-    }
-
-    // Bendras atsakymas su žetonais: naudojamas register, login, refresh ir 2FA
+    // Bendras atsakymas su žetonais: naudojamas register, login ir refresh
     private function respondWithTokens(User $user, Request $request, int $status = 200, ?string $refreshToken = null): JsonResponse
     {
         $refreshToken ??= $this->refreshTokens->create($user, $request);

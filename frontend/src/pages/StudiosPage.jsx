@@ -39,14 +39,13 @@ export default function StudiosPage() {
       <section className="page-banner">
         <img className="page-banner__image" src="/images/film-reels.jpg" alt="Old film reels and projectors on a wall" />
         <div className="container page-banner__content">
-          <p className="eyebrow eyebrow--light">The makers</p>
           <h1 className="page-banner__title">Studios</h1>
           <p className="page-banner__lead">From hand-drawn spirits to prestige television — browse who made what.</p>
         </div>
       </section>
 
       <section className="section container">
-        <SectionHeading reel="01" kicker={data ? `${data.meta.total} studios on file` : 'Studios'} title="The line-up">
+        <SectionHeading title="All studios" count={data?.meta.total}>
           {data?._links?.create && (
             <button type="button" className="btn btn--primary" onClick={() => setCreating(true)}>
               <Plus aria-hidden="true" /> New studio
@@ -80,21 +79,21 @@ export default function StudiosPage() {
               {STUDIO_SORTS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
             </select>
           </label>
-          <button type="submit" className="btn btn--ink">Search</button>
+          <button type="submit" className="btn btn--primary">Search</button>
         </form>
 
         {loading && !data && <Loader />}
         {error && <ErrorState error={error} onRetry={reload} />}
         {data && data.data.length === 0 && <EmptyState title="No studios found">Try a different name or country.</EmptyState>}
         {data && data.data.length > 0 && (
-          <div className={`grid grid--studios ${loading ? 'is-refreshing' : ''}`}>
+          <div className={`studio-list ${loading ? 'is-refreshing' : ''}`}>
             {data.data.map((studio) => <StudioCard key={studio.id} studio={studio} />)}
           </div>
         )}
         <Pagination meta={data?.meta} onPage={(page) => updateFilters({ page })} />
       </section>
 
-      <Modal open={creating} title="New studio" kicker="Casting call" onClose={() => setCreating(false)} size="lg">
+      <Modal open={creating} title="New studio" kicker="Admin" onClose={() => setCreating(false)} size="lg">
         <StudioForm
           onCancel={() => setCreating(false)}
           onSaved={(studio) => {

@@ -11,5 +11,5 @@ php artisan view:cache
 php artisan migrate --force
 php artisan db:seed --force
 
-# Web serveris klauso PORT (Railway jį nustato pats)
+# Web serveris klauso PORT (Render jį nustato pats)
 exec frankenphp php-server --listen ":${PORT:-8080}" --root /app/public

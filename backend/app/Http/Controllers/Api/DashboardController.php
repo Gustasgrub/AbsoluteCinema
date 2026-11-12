@@ -62,7 +62,6 @@ class DashboardController extends Controller
             '_links' => [
                 'self' => Link::to('dashboard'),
                 'studios' => Link::to('studios'),
-                'movies' => Link::to('movies'),
             ],
         ]]);
     }

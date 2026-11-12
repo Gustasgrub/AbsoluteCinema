@@ -15,7 +15,7 @@ return [
 
     'name' => env('APP_NAME', 'AbsoluteCinema'),
 
-    // true – visos sugeneruotos nuorodos naudoja https:// (kai HTTPS baigiasi proxy serveryje, pvz. Railway)
+    // true – visos sugeneruotos nuorodos naudoja https:// (kai HTTPS baigiasi proxy serveryje, pvz. Render)
     'force_https' => (bool) env('FORCE_HTTPS', false),
 
     /*

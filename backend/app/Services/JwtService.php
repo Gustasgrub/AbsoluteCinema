@@ -26,8 +26,6 @@ class JwtService
 {
     public const TYPE_ACCESS = 'access';
 
-    public const TYPE_TWO_FACTOR = 'two_factor';
-
     // Sukuria trumpai galiojantį access žetoną su naudotojo ID ir role
     public function createAccessToken(User $user): string
     {
@@ -39,21 +37,12 @@ class JwtService
         ], $this->accessTtlSeconds());
     }
 
-    // Tarpinis žetonas: slaptažodis jau patikrintas, bet dar reikia 2FA kodo
-    public function createTwoFactorToken(User $user): string
-    {
-        return $this->encode([
-            'sub' => (string) $user->id,
-            'typ' => self::TYPE_TWO_FACTOR,
-        ], config('jwt.two_factor_ttl') * 60);
-    }
-
     /**
      * Patikrina žetoną ir grąžina jo duomenis (claims).
      *
      * @throws InvalidTokenException jei žetonas netinkamas
      */
-    public function decode(string $token, string $expectedType = self::TYPE_ACCESS): object
+    public function decode(string $token): object
     {
         try {
             // Biblioteka patikrina parašą ir laukus "exp", "nbf", "iat"
@@ -64,7 +53,7 @@ class JwtService
             throw new InvalidTokenException('The token is invalid.');
         }
 
-        if (($claims->typ ?? null) !== $expectedType || ! isset($claims->sub, $claims->jti)) {
+        if (($claims->typ ?? null) !== self::TYPE_ACCESS || ! isset($claims->sub, $claims->jti)) {
             throw new InvalidTokenException('The token is invalid.');
         }
 

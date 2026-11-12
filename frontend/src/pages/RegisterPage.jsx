@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router';
-import { Eye, EyeOff, Ticket } from 'lucide-react';
+import { Eye, EyeOff, UserPlus } from 'lucide-react';
+import Logo from '../components/Logo.jsx';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { useToast } from '../components/Toast.jsx';
 import Field from '../components/forms/Field.jsx';
 import { fieldErrors } from '../utils/fieldErrors.js';
 
+// Registracija: po sėkmingos registracijos naudotojas iš karto prisijungia
 export default function RegisterPage() {
   const { user, register } = useAuth();
   const toast = useToast();
@@ -25,7 +27,7 @@ export default function RegisterPage() {
     setErrors({});
     try {
       const data = await register(form);
-      toast.success(`Welcome to the audience, ${data.user.name}!`);
+      toast.success(`Welcome to AbsoluteCinema, ${data.user.name}!`);
       navigate('/', { replace: true });
     } catch (error) {
       if (error.status === 422) setErrors(fieldErrors(error));
@@ -39,18 +41,14 @@ export default function RegisterPage() {
     <section className="auth-page container">
       <figure className="auth-page__art">
         <img src="/images/clapperboard.jpg" alt="A hand holding a film clapperboard in the desert" />
-        <figcaption>“Scene one, take one. Action.”</figcaption>
+        <figcaption>Join for free and add your score to every title.</figcaption>
       </figure>
 
-      <div className="admission">
-        <div className="admission__stub" aria-hidden="true">
-          <span>New</span>
-          <strong>Pass</strong>
-        </div>
+      <div className="auth-card">
+        <Link to="/" className="auth-card__logo" aria-label="AbsoluteCinema – home"><Logo /></Link>
 
-        <form className="admission__form" onSubmit={handleSubmit} noValidate>
-          <p className="eyebrow">Join the audience</p>
-          <h1 className="admission__title">Get a ticket</h1>
+        <form className="auth-card__form" onSubmit={handleSubmit} noValidate>
+          <h1 className="auth-card__title">Create account</h1>
 
           <Field label="Display name" htmlFor="register-name" error={errors.name}>
             <input id="register-name" type="text" autoComplete="nickname" value={form.name} onChange={set('name')} maxLength={50} required />
@@ -84,11 +82,11 @@ export default function RegisterPage() {
             />
           </Field>
 
-          <button type="submit" className="btn btn--primary btn--wide" disabled={busy}>
-            <Ticket aria-hidden="true" /> {busy ? 'Printing your ticket…' : 'Create account'}
+          <button type="submit" className="btn btn--primary btn--block" disabled={busy}>
+            <UserPlus aria-hidden="true" /> {busy ? 'Creating account…' : 'Create your account'}
           </button>
-          <p className="admission__switch">
-            Already a member? <Link to="/login">Log in</Link>
+          <p className="auth-card__switch">
+            Already have an account? <Link to="/login" className="text-link">Sign in</Link>
           </p>
         </form>
       </div>

@@ -35,7 +35,7 @@ export default function ReviewForm({ movie, review, onSaved, onCancel }) {
       const result = editing
         ? await api(`${baseUrl}/${review.id}`, { method: 'PUT', body })
         : await api(baseUrl, { method: 'POST', body });
-      toast.success(editing ? 'Your review was updated.' : 'Review published. Thanks for staying for the credits!');
+      toast.success(editing ? 'Your review was updated.' : 'Review published. Thanks for sharing!');
       onSaved(result.data);
     } catch (error) {
       if (error.status === 422) setErrors(fieldErrors(error));

@@ -2,18 +2,14 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\DashboardController;
-use App\Http\Controllers\Api\MovieController;
 use App\Http\Controllers\Api\MovieReviewController;
-use App\Http\Controllers\Api\RootController;
 use App\Http\Controllers\Api\StudioController;
 use App\Http\Controllers\Api\StudioMovieController;
-use App\Http\Controllers\Api\TwoFactorController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\UserReviewController;
 use App\Models\Movie;
 use App\Models\Review;
 use App\Models\Studio;
-use App\Models\User;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -29,27 +25,28 @@ use Illuminate\Support\Facades\Route;
 |   /studios/1/movies/5 → 404, jei filmas #5 nepriklauso studijai #1.
 */
 
+// ID adrese – tik skaičius (iki 18 skaitmenų), kitaip 404.
+// Be šito PostgreSQL per didelį skaičių (pvz. /studios/99999999999999999999) laikytų klaida ir grąžintų 500.
+Route::patterns([
+    'studio' => '[0-9]{1,18}',
+    'movie' => '[0-9]{1,18}',
+    'review' => '[0-9]{1,18}',
+    'user' => '[0-9]{1,18}',
+]);
+
 Route::scopeBindings()->group(function () {
 
     // ---------- Autentifikacija ----------
     Route::prefix('auth')->group(function () {
         Route::post('register', [AuthController::class, 'register'])->middleware('throttle:auth');
         Route::post('login', [AuthController::class, 'login'])->middleware('throttle:auth');
-        Route::post('two-factor/challenge', [AuthController::class, 'twoFactorChallenge'])->middleware('throttle:auth');
         Route::post('refresh', [AuthController::class, 'refresh']);
 
-        Route::middleware('jwt')->group(function () {
-            Route::post('logout', [AuthController::class, 'logout']);
-            Route::get('me', [AuthController::class, 'me']);
-            Route::post('two-factor', [TwoFactorController::class, 'enable']);
-            Route::post('two-factor/confirm', [TwoFactorController::class, 'confirm']);
-            Route::delete('two-factor', [TwoFactorController::class, 'disable']);
-        });
+        Route::post('logout', [AuthController::class, 'logout'])->middleware('jwt');
     });
 
     // ---------- Skaitymas: gali visi (svečias, narys, administratorius) ----------
     Route::middleware('jwt:optional')->group(function () {
-        Route::get('/', RootController::class);
         Route::get('dashboard', DashboardController::class);
 
         Route::get('studios', [StudioController::class, 'index']);
@@ -62,8 +59,7 @@ Route::scopeBindings()->group(function () {
         Route::get('studios/{studio}/movies/{movie}/reviews', [MovieReviewController::class, 'index']);
         Route::get('studios/{studio}/movies/{movie}/reviews/{review}', [MovieReviewController::class, 'show']);
 
-        Route::get('movies', [MovieController::class, 'index']);
-
+        // Naudotojo profilis ir jo recenzijos
         Route::get('users/{user}', [UserController::class, 'show']);
         Route::get('users/{user}/reviews', [UserReviewController::class, 'index']);
     });
@@ -85,9 +81,7 @@ Route::scopeBindings()->group(function () {
         Route::match(['put', 'patch'], 'studios/{studio}/movies/{movie}/reviews/{review}', [MovieReviewController::class, 'update'])->can('update', 'review');
         Route::delete('studios/{studio}/movies/{movie}/reviews/{review}', [MovieReviewController::class, 'destroy'])->can('delete', 'review');
 
-        // Naudotojai (UserPolicy)
-        Route::get('users', [UserController::class, 'index'])->can('viewAny', User::class);
-        Route::patch('users/{user}', [UserController::class, 'update'])->can('update', 'user');
+        // Naudotojus šalina tik administratorius, bet ne save (UserPolicy)
         Route::delete('users/{user}', [UserController::class, 'destroy'])->can('delete', 'user');
     });
 });

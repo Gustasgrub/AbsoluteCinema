@@ -2,8 +2,8 @@
 # FrankenPHP = PHP + web serveris (Caddy) viename paleidžiamame faile.
 FROM dunglas/frankenphp:1-php8.4
 
-# PHP plėtiniai, kurių reikia Laravel + MySQL
-RUN install-php-extensions pdo_mysql intl zip bcmath opcache
+# PHP plėtiniai, kurių reikia Laravel + PostgreSQL
+RUN install-php-extensions pdo_pgsql intl zip bcmath opcache
 
 WORKDIR /app
 

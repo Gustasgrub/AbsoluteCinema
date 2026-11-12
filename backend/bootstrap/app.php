@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Middleware\AddEtagHeader;
 use App\Http\Middleware\AuthenticateJwt;
 use App\Http\Middleware\ValidateJsonBody;
 use App\Support\ApiError;
@@ -18,7 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        // Railway / Caddy proxy perduoda tikrąjį adresą ir protokolą (https) X-Forwarded-* antraštėmis
+        // Render / Caddy proxy perduoda tikrąjį adresą ir protokolą (https) X-Forwarded-* antraštėmis
         $middleware->trustProxies(at: '*');
 
         // Middleware trumpiniai, naudojami routes/api.php
@@ -26,8 +25,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'jwt' => AuthenticateJwt::class,
         ]);
 
-        // Kiekvienai API užklausai: JSON patikra (400/415), užklausų limitas (429), ETag (304)
-        $middleware->api(prepend: [ValidateJsonBody::class], append: [AddEtagHeader::class]);
+        // Kiekvienai API užklausai: JSON patikra (400/415) ir užklausų limitas (429)
+        $middleware->api(prepend: [ValidateJsonBody::class]);
         $middleware->throttleApi();
     })
     ->withExceptions(function (Exceptions $exceptions): void {

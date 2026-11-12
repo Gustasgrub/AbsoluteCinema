@@ -1,14 +1,8 @@
-// Krovimo animacija – kino juostos atgalinis skaičiavimas (3, 2, 1), žr. styles/animations.css
-export default function Loader({ label = 'Loading the reel' }) {
+// Krovimo indikatorius – besisukantis geltonas žiedas (animacija spin, žr. styles/animations.css)
+export default function Loader({ label = 'Loading' }) {
   return (
     <div className="loader" role="status">
-      <div className="leader" aria-hidden="true">
-        <span className="leader__sweep" />
-        <span className="leader__cross" />
-        <span className="leader__num leader__num--3">3</span>
-        <span className="leader__num leader__num--2">2</span>
-        <span className="leader__num leader__num--1">1</span>
-      </div>
+      <span className="spinner" aria-hidden="true" />
       <p className="loader__label">{label}…</p>
     </div>
   );

@@ -18,7 +18,7 @@ export default function StudioForm({ studio, onSaved, onCancel }) {
     founded_year: studio?.founded_year ?? '',
     headquarters: studio?.headquarters ?? '',
     website: studio?.website ?? '',
-    brand_color: (studio?.brand_color ?? '#d7372a').toLowerCase(),
+    brand_color: (studio?.brand_color ?? '#f5c518').toLowerCase(),
     description: studio?.description ?? '',
   });
 
@@ -40,7 +40,7 @@ export default function StudioForm({ studio, onSaved, onCancel }) {
       const result = editing
         ? await api(`/studios/${studio.id}`, { method: 'PUT', body })
         : await api('/studios', { method: 'POST', body });
-      toast.success(editing ? 'Studio updated.' : 'Studio added to the programme.');
+      toast.success(editing ? 'Studio updated.' : 'Studio added.');
       onSaved(result.data);
     } catch (error) {
       if (error.status === 422) setErrors(fieldErrors(error));
@@ -84,7 +84,7 @@ export default function StudioForm({ studio, onSaved, onCancel }) {
           <input id="studio-website" type="url" placeholder="https://" value={form.website} onChange={set('website')} />
         </Field>
 
-        <Field label="Brand colour" htmlFor="studio-color" error={errors.brand_color} hint="Tints the studio's page and cards" className="span-2">
+        <Field label="Brand colour" htmlFor="studio-color" error={errors.brand_color} hint="Colours the studio badge and page" className="span-2">
           <div className="color-field">
             <input id="studio-color" type="color" value={form.brand_color} onChange={set('brand_color')} />
             <code>{form.brand_color.toUpperCase()}</code>

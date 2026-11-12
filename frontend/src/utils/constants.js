@@ -6,6 +6,9 @@ export const GENRES = [
 
 export const AGE_RATINGS = ['ALL', '7+', '13+', '16+', '18+'];
 
+// Dešimtmečiai filmų filtrui pagal išleidimo metus (studijos puslapyje)
+export const DECADES = [1980, 1990, 2000, 2010, 2020];
+
 export const MOVIE_SORTS = [
   { value: 'title', label: 'Title A–Z' },
   { value: '-rating', label: 'Highest rated' },

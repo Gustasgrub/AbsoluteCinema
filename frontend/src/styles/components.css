@@ -1,148 +1,707 @@
-/* Pakartotinai naudojami komponentai: mygtukai, formos, kortelės, modalas, pranešimai ... */
+/*
+ * Pakartotinai naudojami komponentai: mygtukai, įvertinimai, kortelės, formos,
+ * modaliniai langai, pranešimai, puslapiavimas ir t.t.
+ */
 
-/* ================= Mygtukai ================= */
+/* ================= MYGTUKAI ================= */
 
+/* Numatytasis mygtukas – pilkas (IMDb antriniai mygtukai) */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
-  min-height: 44px;
-  padding: 0 var(--space-4);
-  border: var(--line);
-  border-radius: var(--radius);
-  background: var(--cream);
-  color: var(--ink);
-  box-shadow: var(--shadow);
-  font-family: var(--font-mono);
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  text-decoration: none;
+  min-height: 40px;
+  padding: var(--space-2) var(--space-4);
+  border: 0;
+  border-radius: 999px;
+  background: var(--surface-3);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.2;
   white-space: nowrap;
-  transition: transform 0.15s var(--ease), box-shadow 0.15s var(--ease), background 0.2s;
+  transition: background 0.15s, transform 0.1s;
 }
 
 .btn:hover {
-  transform: translate(-2px, -2px);
-  box-shadow: 6px 6px 0 var(--ink);
+  background: #3a3a3a;
 }
 
 .btn:active {
-  transform: translate(3px, 3px);
-  box-shadow: 1px 1px 0 var(--ink);
+  transform: scale(0.97);
 }
 
 .btn:disabled {
-  opacity: 0.55;
+  opacity: 0.5;
   cursor: not-allowed;
   transform: none;
-  box-shadow: var(--shadow);
 }
 
+/* Pagrindinis veiksmas – geltonas */
 .btn--primary {
-  background: var(--red);
-  color: var(--cream);
+  background: var(--yellow);
+  color: #000;
 }
 
 .btn--primary:hover {
-  background: #e24435;
+  background: var(--yellow-hover);
 }
 
-.btn--ink {
-  background: var(--ink);
-  color: var(--paper);
-  box-shadow: 4px 4px 0 var(--red);
-}
-
-.btn--ink:hover {
-  box-shadow: 6px 6px 0 var(--red);
+.btn--gray {
+  background: var(--surface-3);
 }
 
 .btn--danger {
-  background: var(--ink);
-  color: var(--cream);
-  box-shadow: 4px 4px 0 var(--red);
+  background: var(--red);
+  color: #fff;
 }
 
-.btn--danger-outline {
-  color: var(--red-deep);
-  border-color: var(--red-deep);
+.btn--danger:hover {
+  background: #d94a3b;
 }
 
-.btn--wide {
+.btn--danger-text {
+  color: var(--red);
+}
+
+/* Mėlynas tekstinis mygtukas (pvz. "+ Review") */
+.btn--text {
+  background: transparent;
+  color: var(--blue);
+}
+
+.btn--text:hover {
+  background: rgba(87, 153, 239, 0.12);
+}
+
+.btn--sm {
+  min-height: 32px;
+  padding: var(--space-1) var(--space-3);
+  font-size: 13px;
+}
+
+.btn--block {
   width: 100%;
 }
 
-.btn--icon {
-  width: 44px;
-  padding: 0;
-}
-
-/* Mygtukai tamsiame fone (header, herojaus juostos) – be šešėlio, su šviesiu rėmeliu */
-.btn--on-dark {
-  background: transparent;
-  color: var(--paper);
-  border-color: var(--paper-3);
-  box-shadow: none;
-}
-
-.btn--on-dark:hover {
-  background: rgb(242 234 220 / 0.1);
-  box-shadow: none;
-  transform: translateY(-2px);
-}
-
-.btn--on-dark.btn--danger-outline {
-  color: #ff9d8f;
-  border-color: #ff9d8f;
-}
-
-/* "Bilieto" mygtukas header'yje su perforuotu kraštu */
-.btn--ticket {
-  position: relative;
-  background: var(--amber);
-  color: var(--ink);
-  border: 0;
-  box-shadow: none;
-  padding-inline: var(--space-5);
-  mask: radial-gradient(circle at 0 50%, transparent 7px, #000 7.5px) left / 51% 100% no-repeat,
-    radial-gradient(circle at 100% 50%, transparent 7px, #000 7.5px) right / 51% 100% no-repeat;
-}
-
-.btn--ticket:hover {
-  background: var(--amber-soft);
-  box-shadow: none;
-  transform: rotate(-2deg);
-}
-
+/* Nuoroda, atrodanti kaip mygtukas tekste (Edit / Delete prie recenzijos) */
 .link-btn {
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  padding: 0;
+  padding: var(--space-1) var(--space-2);
   border: 0;
-  background: none;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--ink-2);
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--blue);
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .link-btn:hover {
-  color: var(--ink);
+  background: rgba(87, 153, 239, 0.12);
 }
 
 .link-btn--danger {
-  color: var(--red-deep);
+  color: var(--red);
 }
 
-/* ================= Formos ================= */
+.link-btn--danger:hover {
+  background: rgba(241, 91, 75, 0.12);
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--text-2);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.back-link:hover {
+  color: var(--text);
+}
+
+/* ================= ĮVERTINIMAS ★ 8.6 ================= */
+
+.rating {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--text-2);
+  font-size: 15px;
+}
+
+.rating strong {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.rating__star {
+  color: var(--yellow);
+  fill: currentColor;
+}
+
+.rating--sm {
+  font-size: 14px;
+}
+
+.rating.is-empty .rating__star {
+  color: var(--text-3);
+  fill: none;
+}
+
+.rating__max,
+.rating__count {
+  color: var(--text-3);
+  font-weight: 400;
+}
+
+/* Didelis blokas filmo puslapyje: "AC RATING ★ 9.5/10" */
+.rating-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.rating-block__label {
+  margin: 0 0 var(--space-1);
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.rating-block__value {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 48px;
+  padding: var(--space-1) var(--space-3);
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-2);
+  font-size: 15px;
+  line-height: 1.2;
+  text-align: left;
+}
+
+a.rating-block__value:hover,
+button.rating-block__value:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.rating-block__value > .lucide {
+  width: 30px;
+  height: 30px;
+  color: var(--yellow);
+  fill: currentColor;
+}
+
+.rating-block__value strong {
+  color: var(--text);
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.rating-block__value small {
+  display: block;
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+/* ================= PLAKATAS ================= */
+
+.poster {
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  background: var(--surface-2);
+}
+
+.poster--image {
+  object-fit: cover;
+}
+
+.poster__title {
+  font-family: var(--font-poster);
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.poster__small {
+  font-family: var(--font);
+  font-size: 7px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+/* ================= FILMO KORTELĖ (plakatas + duomenys) ================= */
+
+.title-card {
+  height: 100%;
+}
+
+.title-card__link {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  overflow: hidden;
+  transition: background 0.2s;
+}
+
+.title-card__link:hover {
+  background: var(--surface-2);
+}
+
+.title-card__poster {
+  position: relative;
+  overflow: hidden;
+}
+
+.title-card__poster .poster {
+  transition: transform 0.4s var(--ease), filter 0.4s;
+}
+
+/* Užvedus pelę plakatas šiek tiek priartėja ir pašviesėja */
+.title-card__link:hover .poster {
+  transform: scale(1.04);
+  filter: brightness(1.1);
+}
+
+.title-card__type {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  padding: 2px 6px;
+  border-radius: var(--radius);
+  background: rgba(0, 0, 0, 0.75);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.title-card__body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3);
+}
+
+.title-card__title {
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.3;
+  /* daugiausia 2 eilutės, toliau "…" */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.title-card__link:hover .title-card__title {
+  text-decoration: underline;
+}
+
+.title-card__meta,
+.title-card__studio {
+  margin: 0;
+  color: var(--text-3);
+  font-size: 13px;
+}
+
+.title-card__studio {
+  color: var(--text-2);
+}
+
+/* "Mygtukas" kortelės apačioje (visa kortelė – viena nuoroda) */
+.title-card__cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  margin-top: auto;
+  padding: var(--space-2);
+  border-radius: 999px;
+  background: var(--surface-3);
+  color: var(--blue);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* tarpas tarp paskutinės teksto eilutės ir mygtuko */
+.title-card__body > :nth-last-child(2) {
+  margin-bottom: var(--space-2);
+}
+
+/* ================= STUDIJOS ================= */
+
+.studio-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: var(--space-4);
+}
+
+.studio-card__link {
+  display: flex;
+  gap: var(--space-4);
+  height: 100%;
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  transition: background 0.2s;
+}
+
+.studio-card__link:hover {
+  background: var(--surface-2);
+}
+
+/* Apskritimas su inicialais – studijos spalva (--brand) */
+.studio-card__monogram,
+.studio-hero__monogram {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 25%, color-mix(in srgb, var(--brand) 70%, #fff), var(--brand) 60%);
+  color: #fff;
+  font-weight: 900;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.studio-card__monogram {
+  width: 72px;
+  height: 72px;
+  font-size: 24px;
+}
+
+.studio-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.studio-card__name {
+  font-size: 18px;
+}
+
+.studio-card__link:hover .studio-card__name {
+  text-decoration: underline;
+}
+
+.studio-card__place {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin: 0;
+  color: var(--text-3);
+  font-size: 13px;
+}
+
+.studio-card__stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0;
+  color: var(--text-2);
+  font-size: 14px;
+}
+
+.studio-card__desc {
+  margin: var(--space-1) 0 0;
+  color: var(--text-2);
+  font-size: 14px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ================= RECENZIJA ================= */
+
+.review-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.review {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+/* Mano recenzija – geltonas rėmelis kairėje */
+.review--mine {
+  box-shadow: inset 4px 0 0 var(--yellow);
+}
+
+.review__movie {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--border);
+}
+
+.review__movie-poster {
+  width: 36px;
+  flex-shrink: 0;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.review__movie strong {
+  display: block;
+  font-weight: 700;
+}
+
+.review__movie small {
+  color: var(--text-3);
+  font-size: 13px;
+}
+
+.review__movie:hover strong {
+  text-decoration: underline;
+}
+
+.review__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.review__score {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--text-2);
+  font-size: 15px;
+}
+
+.review__score .lucide {
+  color: var(--yellow);
+  fill: currentColor;
+}
+
+.review__score strong {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.review__title {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.review__body {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 15px;
+  white-space: pre-line;
+}
+
+.review__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  margin-top: auto;
+  font-size: 14px;
+}
+
+.review__author {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--blue);
+  font-weight: 500;
+}
+
+.review__author:hover {
+  text-decoration: underline;
+}
+
+.review__date {
+  color: var(--text-3);
+}
+
+.review__actions {
+  display: flex;
+  gap: var(--space-1);
+  margin-left: auto;
+}
+
+/* Maža žymelė: "Spoiler", "Absolute cinema", "Your review" */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius);
+  background: var(--surface-3);
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.tag .lucide {
+  width: 14px;
+  height: 14px;
+}
+
+.tag--yellow {
+  background: var(--yellow);
+  color: #000;
+}
+
+.tag--red {
+  background: rgba(241, 91, 75, 0.18);
+  color: var(--red);
+}
+
+/* ================= SKYRIAUS ANTRAŠTĖ "| Top picks >" ================= */
+
+.section-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+.section-title {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding-left: var(--space-3);
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+/* Geltonas vertikalus brūkšnys kairėje */
+.section-title::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 2px;
+  bottom: 2px;
+  width: 4px;
+  border-radius: 4px;
+  background: var(--yellow);
+}
+
+.section-title a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.section-title__count {
+  margin-left: var(--space-3);
+  color: var(--text-3);
+  font-size: 16px;
+  font-weight: 400;
+}
+
+.section-title__arrow {
+  width: 28px;
+  height: 28px;
+  transition: transform 0.2s, color 0.2s;
+}
+
+.section-title a:hover .section-title__arrow {
+  color: var(--yellow);
+  transform: translateX(3px);
+}
+
+.section-heading__sub {
+  margin: var(--space-1) 0 0 var(--space-3);
+  color: var(--text-3);
+  font-size: 15px;
+}
+
+.section-heading__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* ================= ŽANRŲ "PILIULĖS" ================= */
+
+.chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.genre-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 6px var(--space-4);
+  border: 1px solid var(--border-2);
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.genre-chip:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--text-2);
+}
+
+.genre-chip span {
+  color: var(--text-3);
+}
+
+/* ================= AVATARAS ================= */
+
+.avatar {
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--avatar-color);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.avatar--sm {
+  width: 28px;
+  height: 28px;
+  font-size: 11px;
+}
+
+.avatar--xl {
+  width: 112px;
+  height: 112px;
+  font-size: 40px;
+}
+
+/* ================= FORMOS ================= */
 
 .form {
   display: flex;
@@ -152,9 +711,8 @@
 
 .form-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-4) var(--space-5);
-  align-items: start;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
 }
 
 .span-2 {
@@ -164,7 +722,7 @@
 .field {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--space-1);
   min-width: 0;
   margin: 0;
   padding: 0;
@@ -172,45 +730,61 @@
 }
 
 .field__label {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--ink-2);
   padding: 0;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.field__label strong {
+  color: var(--yellow);
 }
 
 .field__hint {
   margin: 0;
+  color: var(--text-3);
   font-size: 13px;
-  color: var(--ink-3);
 }
 
 .field__error,
 .form-error {
   margin: 0;
+  color: var(--red);
   font-size: 14px;
-  font-weight: 600;
-  color: var(--red-deep);
 }
 
 .form-error {
-  padding: var(--space-3) var(--space-4);
-  background: #f6d5cd;
-  border-left: 4px solid var(--red);
+  padding: var(--space-3);
+  border-radius: var(--radius);
+  background: rgba(241, 91, 75, 0.12);
 }
 
-input:not([type='radio'], [type='checkbox'], [type='color'], [type='range']),
+input[type='text'],
+input[type='email'],
+input[type='password'],
+input[type='search'],
+input[type='number'],
+input[type='url'],
+input[type='date'],
 select,
 textarea {
   width: 100%;
-  min-height: 44px;
+  min-height: 42px;
   padding: var(--space-2) var(--space-3);
-  background: var(--cream);
-  border: var(--line);
+  border: 1px solid var(--border-2);
   border-radius: var(--radius);
-  transition: box-shadow 0.15s, border-color 0.15s;
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 15px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--yellow);
+  box-shadow: 0 0 0 1px var(--yellow);
 }
 
 textarea {
@@ -218,39 +792,21 @@ textarea {
   line-height: 1.5;
 }
 
-select {
-  appearance: none;
-  padding-right: 36px;
-  background-image: linear-gradient(45deg, transparent 50%, var(--ink) 50%), linear-gradient(135deg, var(--ink) 50%, transparent 50%);
-  background-position: calc(100% - 18px) 52%, calc(100% - 12px) 52%;
-  background-size: 6px 6px;
-  background-repeat: no-repeat;
+input[type='date'] {
+  color-scheme: dark;
 }
 
-input:focus,
-select:focus,
-textarea:focus {
-  outline: none;
-  box-shadow: 4px 4px 0 var(--amber);
+::placeholder {
+  color: var(--text-3);
 }
 
-.field.has-error input,
-.field.has-error textarea,
-.field.has-error select {
+.has-error input,
+.has-error textarea,
+.has-error select {
   border-color: var(--red);
-  background-color: #fff2ee;
 }
 
-.form-actions {
-  display: flex;
-  justify-content: flex-end;
-  flex-wrap: wrap;
-  gap: var(--space-3);
-  padding-top: var(--space-3);
-  border-top: 1px dashed var(--paper-3);
-}
-
-/* Paieškos laukas su ikona */
+/* Įvestis su ikona kairėje (paieška) arba mygtuku dešinėje (slaptažodžio rodymas) */
 .input-icon {
   position: relative;
   display: block;
@@ -258,145 +814,129 @@ textarea:focus {
 
 .input-icon > .lucide {
   position: absolute;
-  left: 12px;
+  left: var(--space-3);
   top: 50%;
   transform: translateY(-50%);
-  color: var(--ink-3);
+  color: var(--text-3);
   pointer-events: none;
 }
 
 .input-icon input {
-  padding-left: 40px;
+  padding-left: 38px;
 }
 
 .input-icon--end input {
   padding-left: var(--space-3);
-  padding-right: 48px;
+  padding-right: 44px;
 }
 
 .input-icon__btn {
   position: absolute;
   right: 4px;
   top: 50%;
-  transform: translateY(-50%);
   display: grid;
   place-items: center;
   width: 36px;
   height: 36px;
   border: 0;
-  background: none;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-2);
+  transform: translateY(-50%);
 }
 
-/* Segmentuotas pasirinkimas (radio mygtukai) */
+.input-icon__btn:hover {
+  color: var(--text);
+}
+
+/* Segmentuotas pasirinkimas: [ All | Movies | Series ] – tai radio mygtukai */
 .segmented {
   display: inline-flex;
-  border: var(--line);
-  border-radius: var(--radius);
-  overflow: hidden;
-  background: var(--cream);
-}
-
-.segmented--full {
-  display: flex;
-}
-
-.segmented__option {
-  position: relative;
-  flex: 1;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--surface-2);
 }
 
 .segmented__option input,
 .chip input,
-.rating-frame input,
-.toggle input {
+.star-option input {
   position: absolute;
   opacity: 0;
-  width: 1px;
-  height: 1px;
+  pointer-events: none;
 }
 
 .segmented__option span {
   display: block;
-  padding: var(--space-2) var(--space-4);
-  font-family: var(--font-mono);
-  font-size: 13px;
-  font-weight: 600;
+  padding: 6px var(--space-4);
+  border-radius: 999px;
+  color: var(--text-2);
+  font-size: 14px;
+  font-weight: 700;
   text-align: center;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
   cursor: pointer;
-  transition: background 0.2s, color 0.2s;
-}
-
-.segmented__option + .segmented__option span {
-  border-left: var(--line);
+  transition: background 0.15s, color 0.15s;
 }
 
 .segmented__option input:checked + span {
-  background: var(--ink);
-  color: var(--amber);
+  background: var(--yellow);
+  color: #000;
 }
 
 .segmented__option input:focus-visible + span,
-.chip input:focus-visible + span,
-.rating-frame input:focus-visible + span,
-.toggle input:focus-visible + .toggle__track {
-  outline: 3px solid var(--amber);
+.chip input:focus-visible + span {
+  outline: 2px solid var(--yellow);
   outline-offset: 2px;
 }
 
-/* Žymos (chips) */
+/* Pasirenkamos žymės (žanras, amžiaus cenzas) */
 .chips {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
 }
 
-.chip {
-  position: relative;
-}
-
 .chip span {
   display: inline-block;
-  padding: 4px 12px;
-  border: 1.5px solid var(--ink);
+  padding: 4px var(--space-3);
+  border: 1px solid var(--border-2);
   border-radius: 999px;
+  color: var(--text-2);
   font-size: 13px;
-  font-weight: 500;
-  background: var(--cream);
   cursor: pointer;
-  transition: background 0.2s, color 0.2s, transform 0.2s;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 
 .chip span:hover {
-  transform: translateY(-1px);
+  border-color: var(--text-2);
+  color: var(--text);
 }
 
 .chip input:checked + span {
-  background: var(--red);
-  border-color: var(--red);
-  color: var(--cream);
+  border-color: var(--yellow);
+  background: rgba(245, 197, 24, 0.15);
+  color: var(--yellow);
 }
 
-/* Jungiklis (checkbox) */
+/* Jungiklis (toggle) – stilizuotas checkbox */
 .toggle {
-  position: relative;
   display: inline-flex;
   align-items: center;
-  gap: var(--space-3);
-  min-height: 44px;
+  gap: var(--space-2);
+  font-size: 14px;
   cursor: pointer;
-  font-size: 15px;
+}
+
+.toggle input {
+  position: absolute;
+  opacity: 0;
 }
 
 .toggle__track {
   position: relative;
-  width: 48px;
-  height: 26px;
-  flex-shrink: 0;
-  border: var(--line);
+  width: 40px;
+  height: 22px;
   border-radius: 999px;
-  background: var(--cream);
+  background: var(--surface-3);
   transition: background 0.2s;
 }
 
@@ -408,19 +948,33 @@ textarea:focus {
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: var(--ink);
-  transition: transform 0.25s var(--ease);
+  background: #fff;
+  transition: transform 0.2s var(--ease);
 }
 
 .toggle input:checked + .toggle__track {
-  background: var(--amber);
+  background: var(--yellow);
 }
 
 .toggle input:checked + .toggle__track::after {
-  transform: translateX(22px);
+  background: #000;
+  transform: translateX(18px);
 }
 
-/* Spalvos parinkiklis */
+.toggle input:focus-visible + .toggle__track {
+  outline: 2px solid var(--yellow);
+  outline-offset: 2px;
+}
+
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  padding-top: var(--space-2);
+}
+
+/* Spalvos pasirinkimas studijos formoje */
 .color-field {
   display: flex;
   align-items: center;
@@ -428,922 +982,30 @@ textarea:focus {
 }
 
 .color-field input[type='color'] {
-  width: 56px;
-  height: 44px;
+  width: 48px;
+  height: 42px;
   padding: 2px;
-  border: var(--line);
+  border: 1px solid var(--border-2);
   border-radius: var(--radius);
-  background: var(--cream);
+  background: var(--surface-2);
   cursor: pointer;
 }
 
 .color-field code {
-  font-weight: 600;
+  color: var(--text-2);
 }
 
 .color-field__preview {
-  flex: 1;
-  padding: var(--space-2) var(--space-3);
-  border-left: 8px solid var(--brand);
-  background: color-mix(in srgb, var(--brand) 18%, var(--cream));
-  font-family: var(--font-display);
-  font-weight: 800;
-  font-size: 20px;
-  text-transform: uppercase;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* Slankiklis */
-input[type='range'] {
-  width: 100%;
-  accent-color: var(--red);
-  height: 28px;
-}
-
-.range-pair {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-/* Įvertinimo pasirinkimas: 10 "kadrų" */
-.rating-input__frames {
-  display: grid;
-  grid-template-columns: repeat(10, 1fr);
-  gap: 4px;
-  padding: 8px;
-  background: var(--ink);
-  border-radius: var(--radius);
-}
-
-.rating-frame {
-  position: relative;
-}
-
-.rating-frame span {
-  display: grid;
-  place-items: center;
-  height: 44px;
-  border-radius: 2px;
-  background: var(--ink-2);
-  color: var(--paper-3);
-  font-family: var(--font-display);
-  font-weight: 800;
-  font-size: 20px;
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s, transform 0.15s;
-}
-
-.rating-frame.is-on span {
-  background: var(--amber);
-  color: var(--ink);
-}
-
-/* Užvedus pelę "užsidega" visi kadrai iki pelės vietos */
-.rating-input__frames:hover .rating-frame span {
-  background: var(--amber-soft);
-  color: var(--ink);
-}
-
-.rating-input__frames:hover .rating-frame:hover ~ .rating-frame span {
-  background: var(--ink-2);
-  color: var(--paper-3);
-}
-
-.rating-frame:hover span {
-  transform: translateY(-3px);
-}
-
-.rating-input__word {
-  margin: 0;
-  font-family: var(--font-serif);
-  font-style: italic;
-  font-size: 20px;
-}
-
-/* 2FA kodo langeliai */
-.otp {
-  display: flex;
-  gap: var(--space-2);
-}
-
-.otp .otp__box {
-  width: 48px;
-  min-height: 56px;
-  padding: 0;
-  text-align: center;
-  font-family: var(--font-display);
-  font-size: 28px;
-  font-weight: 800;
-}
-
-/* ================= Avataras ================= */
-
-.avatar {
-  display: inline-grid;
-  place-items: center;
-  flex-shrink: 0;
-  border-radius: 50%;
-  background: var(--avatar-color);
-  color: var(--cream);
-  font-family: var(--font-display);
-  font-weight: 800;
-  letter-spacing: 0.04em;
-}
-
-.avatar--sm { width: 32px; height: 32px; font-size: 14px; }
-.avatar--md { width: 44px; height: 44px; font-size: 18px; }
-.avatar--xl { width: 112px; height: 112px; font-size: 44px; border: 4px solid var(--ink); }
-
-/* ================= Skyriaus antraštė ================= */
-
-.section-heading {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: var(--space-4);
-  margin-bottom: var(--space-5);
-  padding-bottom: var(--space-4);
-  border-bottom: var(--line);
-}
-
-.section-heading__title {
-  font-family: var(--font-display);
-  font-weight: 900;
-  font-size: clamp(36px, 5vw, 60px);
-  text-transform: uppercase;
-  letter-spacing: 0.01em;
-}
-
-.section-heading__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-3);
-}
-
-/* ================= Plakatas ================= */
-
-.poster {
-  width: 100%;
-  aspect-ratio: 2 / 3;
-  object-fit: cover;
-  background: var(--paper-3);
-}
-
-.poster__title {
-  font-family: var(--font-display);
-  font-weight: 800;
-  letter-spacing: 0.01em;
-}
-
-.poster__small {
-  font-family: var(--font-mono);
-  font-size: 7px;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-}
-
-/* ================= Įvertinimo antspaudas ================= */
-
-.rating-badge {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: var(--amber);
-  color: var(--ink);
-  border: 2px solid var(--ink);
-  box-shadow: inset 0 0 0 3px var(--amber), inset 0 0 0 4px var(--ink);
-  transform: rotate(-8deg);
-  line-height: 1;
-}
-
-.rating-badge strong {
-  font-family: var(--font-display);
-  font-weight: 900;
-}
-
-.rating-badge small {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.rating-badge.is-empty {
-  background: var(--paper-2);
-  box-shadow: inset 0 0 0 3px var(--paper-2), inset 0 0 0 4px var(--ink);
-}
-
-.rating-badge--sm { width: 48px; height: 48px; }
-.rating-badge--sm strong { font-size: 20px; }
-.rating-badge--md { width: 64px; height: 64px; }
-.rating-badge--md strong { font-size: 26px; }
-.rating-badge--lg { width: 104px; height: 104px; }
-.rating-badge--lg strong { font-size: 40px; }
-.rating-badge--xl { width: 148px; height: 148px; gap: 4px; }
-.rating-badge--xl strong { font-size: 60px; }
-.rating-badge--xl small { font-size: 11px; }
-
-/* ================= Filmo kortelė ================= */
-
-.movie-card {
-  position: relative;
-}
-
-.movie-card__link {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  text-decoration: none;
-  background: var(--cream);
-  border: var(--line);
-  box-shadow: var(--shadow);
-  transition: transform 0.25s var(--ease), box-shadow 0.25s var(--ease);
-}
-
-.movie-card__poster {
-  position: relative;
-  overflow: hidden;
-  border-bottom: var(--line);
-}
-
-/* Projektoriaus šviesos "perbraukimas" užvedus pelę (animacija – animations.css) */
-.movie-card__poster::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(105deg, transparent 35%, rgb(255 244 214 / 0.55) 50%, transparent 65%);
-  transform: translateX(-120%);
-}
-
-.movie-card__link:hover {
-  transform: translate(-3px, -3px) rotate(-0.6deg);
-  box-shadow: var(--shadow-lg);
-}
-
-.movie-card__link:hover .movie-card__poster::after {
-  animation: projector-sweep 0.9s var(--ease);
-}
-
-/* Tipo etiketė "kabo" ant kortelės krašto, kaip užrašas ant juostos dėžutės */
-.movie-card__type {
-  position: absolute;
-  top: -11px;
-  left: 10px;
-  z-index: 2;
-  padding: 2px 6px;
-  background: var(--ink);
-  color: var(--amber);
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
-.movie-card__body {
-  padding: var(--space-3) var(--space-3) var(--space-4);
-  padding-right: 60px;
-}
-
-.movie-card__title {
-  font-family: var(--font-display);
-  font-weight: 800;
-  font-size: 22px;
-  text-transform: uppercase;
-  line-height: 1;
-  margin-bottom: var(--space-1);
-}
-
-.movie-card__meta {
-  margin: 0;
-  font-size: 13px;
-  color: var(--ink-3);
-}
-
-.movie-card__studio {
-  margin: var(--space-2) 0 0;
-  padding-left: var(--space-2);
-  border-left: 4px solid var(--brand);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.movie-card .rating-badge {
-  position: absolute;
-  right: 8px;
-  bottom: 12px;
-}
-
-/* ================= Studijos kortelė ================= */
-
-.studio-card__link {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  padding: var(--space-5);
-  padding-left: calc(var(--space-5) + 10px);
-  text-decoration: none;
-  background: var(--cream);
-  border: var(--line);
-  box-shadow: var(--shadow);
-  overflow: hidden;
-  transition: transform 0.25s var(--ease), box-shadow 0.25s var(--ease);
-}
-
-.studio-card__link::before {
-  content: '';
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 10px;
+  padding: var(--space-1) var(--space-3);
+  border-radius: 999px;
   background: var(--brand);
-  transition: width 0.35s var(--ease);
-}
-
-.studio-card__link:hover {
-  transform: translate(-3px, -3px);
-  box-shadow: var(--shadow-lg);
-}
-
-.studio-card__link:hover::before {
-  width: 18px;
-}
-
-.studio-card__top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: var(--space-3);
-}
-
-.studio-card__monogram {
-  display: grid;
-  place-items: center;
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: var(--brand);
-  color: var(--cream);
-  font-family: var(--font-display);
-  font-weight: 900;
-  font-size: 20px;
-}
-
-.studio-card__est {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--ink-3);
-}
-
-.studio-card__name {
-  font-family: var(--font-display);
-  font-weight: 900;
-  font-size: 30px;
-  text-transform: uppercase;
-  margin-bottom: var(--space-1);
-}
-
-.studio-card__place {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-  font-size: 14px;
-  color: var(--ink-3);
-  margin-bottom: var(--space-3);
-}
-
-.studio-card__desc {
-  flex: 1;
-  font-size: 15px;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.studio-card__stats {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  margin: var(--space-3) 0 0;
-  border-top: 1px dashed var(--ink-3);
-  padding-top: var(--space-3);
-}
-
-.studio-card__stats dt {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--ink-3);
-}
-
-.studio-card__stats dd {
-  margin: 0;
-  font-family: var(--font-display);
-  font-weight: 800;
-  font-size: 28px;
-}
-
-/* ================= Recenzija – kino bilietas ================= */
-
-.ticket {
-  position: relative;
-  display: grid;
-  grid-template-columns: 96px 1fr;
-  background: var(--cream);
-  border: var(--line);
-  box-shadow: var(--shadow);
-  transition: transform 0.25s var(--ease);
-}
-
-/* Išpjovos bilieto šonuose (perforacijos linija) */
-.ticket::before,
-.ticket::after {
-  content: '';
-  position: absolute;
-  left: 84px;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: var(--paper);
-  border: var(--line);
-}
-
-.ticket::before {
-  top: -12px;
-  clip-path: inset(50% 0 0 0);
-}
-
-.ticket::after {
-  bottom: -12px;
-  clip-path: inset(0 0 50% 0);
-}
-
-.ticket:hover {
-  transform: rotate(-0.4deg) translateY(-2px);
-}
-
-.ticket--mine {
-  background: #fff8e4;
-  box-shadow: 4px 4px 0 var(--amber), var(--shadow);
-}
-
-.ticket__stub {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-4) var(--space-2);
-  border-right: 2px dashed var(--ink);
-  background: var(--paper-2);
-  text-align: center;
-}
-
-.ticket__score {
-  font-family: var(--font-display);
-  font-weight: 900;
-  font-size: 48px;
-  line-height: 0.9;
-}
-
-.ticket__of {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--ink-3);
-}
-
-.ticket__word {
-  margin-top: var(--space-2);
-  font-family: var(--font-mono);
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--red-deep);
-}
-
-.ticket__main {
-  min-width: 0;
-  padding: var(--space-4) var(--space-5);
-}
-
-.ticket__movie {
-  display: inline-block;
-  margin-bottom: var(--space-1);
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  text-decoration-color: var(--red);
-}
-
-.ticket__movie span {
-  color: var(--ink-3);
-}
-
-.ticket--ten .ticket__title {
-  padding-right: 110px; /* vieta "Absolute Cinema" antspaudui */
-}
-
-.ticket__title {
-  font-family: var(--font-serif);
-  font-weight: 400;
-  font-style: italic;
-  font-size: 26px;
-  line-height: 1.1;
-  margin-bottom: var(--space-2);
-}
-
-.ticket__body {
-  position: relative;
-  font-size: 15px;
-}
-
-.ticket__body.is-hidden p {
-  filter: blur(6px);
-  user-select: none;
-}
-
-.spoiler-btn {
-  position: absolute;
-  inset: 50% auto auto 50%;
-  transform: translate(-50%, -50%);
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  border: var(--line);
-  background: var(--ink);
-  color: var(--amber);
-  font-family: var(--font-mono);
-  font-size: 12px;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.ticket__foot {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2) var(--space-4);
-  margin-top: var(--space-3);
-  padding-top: var(--space-3);
-  border-top: 1px dashed var(--paper-3);
-}
-
-.ticket__author {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-weight: 600;
-  font-size: 14px;
-  text-decoration: none;
-}
-
-.ticket__author:hover {
-  text-decoration: underline;
-}
-
-.ticket__date {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ink-3);
-}
-
-.ticket__actions {
-  display: inline-flex;
-  gap: var(--space-4);
-  margin-left: auto;
-}
-
-/* "ABSOLUTE CINEMA" antspaudas 10/10 recenzijoms */
-.stamp {
-  position: absolute;
-  top: 10px;
-  right: 12px;
-  padding: 6px 10px;
-  border: 3px double var(--red);
-  border-radius: 6px;
-  color: var(--red);
-  font-family: var(--font-display);
-  font-weight: 900;
-  font-size: 14px;
-  line-height: 1;
-  text-align: center;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  transform: rotate(8deg);
-  opacity: 0.85;
-  pointer-events: none;
-}
-
-.review-list {
-  display: grid;
-  gap: var(--space-5);
-}
-
-/* ================= Filtrų juosta ================= */
-
-.filter-bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: var(--space-3) var(--space-4);
-  margin-bottom: var(--space-6);
-  padding: var(--space-4);
-  background: var(--paper-2);
-  border: var(--line);
-}
-
-.filter-bar__search {
-  position: relative;
-  flex: 1 1 240px;
-}
-
-.filter-bar__search > .lucide {
-  position: absolute;
-  left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--ink-3);
-}
-
-.filter-bar__search input {
-  padding-left: 40px;
-}
-
-.filter-bar__field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  min-width: 180px;
-}
-
-.filter-bar__field > span {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--ink-2);
-}
-
-/* ================= Puslapiavimas ================= */
-
-.pagination {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  align-items: center;
-  gap: var(--space-2);
-  margin-top: var(--space-7);
-}
-
-.pagination__btn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  min-width: 44px;
-  min-height: 44px;
-  padding: 0 var(--space-3);
-  border: var(--line);
-  background: var(--cream);
-  font-family: var(--font-mono);
+  color: #fff;
   font-size: 13px;
-  font-weight: 600;
-  justify-content: center;
-  transition: background 0.2s, color 0.2s, transform 0.15s;
+  font-weight: 700;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
-.pagination__btn:hover:not(:disabled) {
-  transform: translateY(-2px);
-}
-
-.pagination__btn[aria-current='page'] {
-  background: var(--ink);
-  color: var(--amber);
-}
-
-.pagination__btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.pagination__gap {
-  font-family: var(--font-mono);
-}
-
-/* ================= Būsenos (tuščia / klaida) ================= */
-
-.state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-2);
-  margin: var(--space-6) auto;
-  padding: var(--space-7) var(--space-5);
-  max-width: 560px;
-  text-align: center;
-  border: 2px dashed var(--ink-3);
-}
-
-.state__icon {
-  width: 48px;
-  height: 48px;
-  color: var(--red);
-}
-
-.state h2 {
-  font-family: var(--font-display);
-  font-weight: 900;
-  font-size: 34px;
-  text-transform: uppercase;
-}
-
-.state__actions {
-  display: flex;
-  gap: var(--space-3);
-  margin-top: var(--space-3);
-}
-
-/* ================= Krovimo animacija – atgalinis skaičiavimas ================= */
-
-.loader {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-4);
-  padding: var(--space-8) 0;
-}
-
-.leader {
-  position: relative;
-  width: 112px;
-  height: 112px;
-  border-radius: 50%;
-  border: 4px solid var(--ink);
-  background: var(--paper-2);
-  overflow: hidden;
-}
-
-.leader__sweep {
-  position: absolute;
-  inset: 0;
-  background: conic-gradient(from 0deg, rgb(23 19 14 / 0.35) 0 90deg, transparent 90deg);
-  animation: leader-spin 1s linear infinite;
-}
-
-.leader__cross {
-  position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(var(--ink), var(--ink)) center / 2px 100% no-repeat,
-    linear-gradient(var(--ink), var(--ink)) center / 100% 2px no-repeat;
-}
-
-.leader__cross::after {
-  content: '';
-  position: absolute;
-  inset: 14px;
-  border: 2px solid var(--ink);
-  border-radius: 50%;
-}
-
-.leader__num {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  font-family: var(--font-display);
-  font-weight: 900;
-  font-size: 56px;
-  opacity: 0;
-  animation: leader-count 3s steps(1) infinite;
-}
-
-.leader__num--2 { animation-delay: 1s; }
-.leader__num--1 { animation-delay: 2s; }
-
-.loader__label {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--ink-3);
-}
-
-/* ================= Modalinis langas ================= */
-
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 90;
-  display: grid;
-  place-items: start center; /* aukštas langas prasideda viršuje ir slenka, žemas – centruojamas (margin: auto) */
-  padding: var(--space-5) var(--space-4);
-  overflow-y: auto;
-  background: rgb(23 19 14 / 0.72);
-  backdrop-filter: blur(3px);
-  animation: fade-in 0.2s ease;
-}
-
-.modal {
-  position: relative;
-  width: 100%;
-  max-width: 560px;
-  margin-block: auto;
-  background: var(--paper);
-  border: var(--line);
-  box-shadow: 10px 10px 0 var(--red);
-  animation: modal-in 0.35s var(--ease);
-}
-
-.modal--sm { max-width: 440px; }
-.modal--lg { max-width: 760px; }
-.modal--xl { max-width: 980px; }
-
-/* Klaketė – juostuota viršutinė dalis, kuri "užsitrenkia" atsidarant langui */
-.clapper {
-  position: relative;
-  height: 40px;
-}
-
-.clapper__stick,
-.clapper__base {
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 20px;
-  background: repeating-linear-gradient(-55deg, var(--ink) 0 18px, var(--cream) 18px 36px);
-}
-
-.clapper__stick {
-  top: 0;
-  transform-origin: 0 100%;
-  animation: clap 0.55s 0.05s var(--ease) both;
-}
-
-.clapper__base {
-  bottom: 0;
-  border-top: 2px solid var(--ink);
-  background: repeating-linear-gradient(55deg, var(--ink) 0 18px, var(--cream) 18px 36px);
-}
-
-.modal__head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-4);
-  padding: var(--space-4) var(--space-5) 0;
-  border-top: var(--line);
-}
-
-.modal__title {
-  font-family: var(--font-display);
-  font-weight: 900;
-  font-size: 32px;
-  text-transform: uppercase;
-}
-
-.modal__close {
-  display: grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
-  border: var(--line);
-  background: var(--cream);
-  transition: transform 0.2s;
-}
-
-.modal__close:hover {
-  transform: rotate(90deg);
-}
-
-.modal__body {
-  padding: var(--space-5);
-}
-
-.confirm__message {
-  font-size: 17px;
-}
-
-/* Filmo forma su gyva plakato peržiūra */
+/* Filmo forma su gyva plakato peržiūra kairėje */
 .form--with-preview {
   display: grid;
   grid-template-columns: 200px 1fr;
@@ -1361,133 +1023,375 @@ input[type='range'] {
 }
 
 .form-preview .poster {
-  border: var(--line);
-  box-shadow: var(--shadow);
+  border-radius: var(--radius);
 }
 
 .form-preview__label {
-  margin-top: var(--space-3);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--ink-3);
+  margin-top: var(--space-2);
+  color: var(--text-3);
+  font-size: 12px;
   text-align: center;
 }
 
-/* ================= Pranešimai (toast) ================= */
+/* ================= ŽVAIGŽDUČIŲ ĮVERTINIMAS (Rate this) ================= */
+
+.rating-input {
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+}
+
+.rating-input__stars {
+  display: flex;
+  gap: 2px;
+}
+
+.star-option {
+  display: grid;
+  place-items: center;
+  padding: 3px;
+  border-radius: var(--radius);
+  color: var(--text-3);
+  cursor: pointer;
+  transition: color 0.1s, transform 0.1s;
+}
+
+.star-option .lucide {
+  width: 28px;
+  height: 28px;
+}
+
+.star-option.is-on {
+  color: var(--blue);
+}
+
+.star-option.is-on .lucide {
+  fill: currentColor;
+}
+
+.star-option:hover {
+  transform: scale(1.15);
+}
+
+.star-option:has(input:focus-visible) {
+  outline: 2px solid var(--yellow);
+}
+
+.rating-input__word {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 14px;
+}
+
+/* ================= MODALINIS LANGAS ================= */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  background: rgba(0, 0, 0, 0.75);
+  overflow-y: auto;
+  animation: fade-in 0.2s ease;
+}
+
+.modal {
+  position: relative;
+  width: 100%;
+  max-width: 560px;
+  max-height: calc(100vh - 32px);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  overflow-y: auto;
+  animation: modal-in 0.25s var(--ease);
+}
+
+.modal--sm {
+  max-width: 440px;
+}
+
+.modal--lg {
+  max-width: 720px;
+}
+
+.modal--xl {
+  max-width: 920px;
+}
+
+.modal__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-5) var(--space-3);
+}
+
+.modal__title {
+  font-size: 22px;
+}
+
+.modal__close {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--surface-3);
+  color: var(--text);
+}
+
+.modal__close:hover {
+  background: #3a3a3a;
+}
+
+.modal__body {
+  padding: 0 var(--space-5) var(--space-5);
+}
+
+.confirm__message {
+  color: var(--text-2);
+}
+
+/* ================= PRANEŠIMAI (toast) ================= */
 
 .toasts {
   position: fixed;
-  right: var(--space-5);
-  bottom: var(--space-5);
-  z-index: 95;
+  right: var(--space-4);
+  bottom: var(--space-4);
+  z-index: 150;
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-2);
   width: min(380px, calc(100vw - 32px));
 }
 
 .toast {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: start;
+  display: flex;
+  align-items: flex-start;
   gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  background: var(--ink);
-  color: var(--paper);
-  border-left: 8px solid var(--teal);
-  box-shadow: 6px 6px 0 rgb(23 19 14 / 0.25);
-  animation: toast-in 0.4s var(--ease);
-}
-
-.toast--error { border-left-color: var(--red); }
-.toast--info { border-left-color: var(--amber); }
-
-.toast__icon {
-  margin-top: 2px;
-  color: var(--amber);
+  padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4);
+  border-left: 4px solid var(--blue);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  box-shadow: var(--shadow);
+  font-size: 14px;
+  animation: toast-in 0.3s var(--ease);
 }
 
 .toast p {
+  flex: 1;
   margin: 0;
-  font-size: 15px;
+}
+
+.toast__icon {
+  margin-top: 1px;
+  color: var(--blue);
+}
+
+.toast--success {
+  border-color: var(--green);
+}
+
+.toast--success .toast__icon {
+  color: var(--green);
+}
+
+.toast--error {
+  border-color: var(--red);
+}
+
+.toast--error .toast__icon {
+  color: var(--red);
 }
 
 .toast__close {
-  padding: 0;
+  display: grid;
+  place-items: center;
+  padding: 2px;
   border: 0;
-  background: none;
-  color: var(--paper-3);
+  background: transparent;
+  color: var(--text-3);
 }
 
-/* ================= Lentelė ================= */
-
-.table-wrap {
-  overflow-x: auto;
-  border: var(--line);
-  box-shadow: var(--shadow);
-  background: var(--cream);
+.toast__close:hover {
+  color: var(--text);
 }
 
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 15px;
+/* ================= KROVIMAS, KLAIDOS, TUŠČIA ================= */
+
+.loader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-8) 0;
 }
 
-.table th {
-  padding: var(--space-3) var(--space-4);
-  background: var(--ink);
-  color: var(--amber);
-  font-family: var(--font-mono);
-  font-size: 12px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  text-align: left;
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid var(--surface-3);
+  border-top-color: var(--yellow);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
 }
 
-.table td {
-  padding: var(--space-3) var(--space-4);
-  border-top: 1px solid var(--paper-3);
-  vertical-align: middle;
+.loader__label {
+  color: var(--text-3);
+  font-size: 14px;
 }
 
-.table tbody tr:hover {
-  background: var(--paper-2);
-}
-
-.table__user {
-  display: inline-flex;
+.state {
+  display: flex;
+  flex-direction: column;
   align-items: center;
   gap: var(--space-2);
-  font-weight: 600;
-  text-decoration: none;
+  margin-top: var(--space-5);
+  padding: var(--space-7) var(--space-5);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  text-align: center;
 }
 
-.table__actions {
-  text-align: right;
+.state__icon {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  margin-bottom: var(--space-2);
+  border-radius: 50%;
+  background: var(--surface-3);
+  color: var(--yellow);
 }
 
-.role-select {
+.state__icon .lucide {
+  width: 28px;
+  height: 28px;
+}
+
+.state h2 {
+  font-size: 20px;
+}
+
+.state p {
+  color: var(--text-2);
+}
+
+.state__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+/* Kol kraunasi nauji duomenys, seni rodomi pusiau permatomi */
+.is-refreshing {
+  opacity: 0.5;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+
+/* ================= PUSLAPIAVIMAS ================= */
+
+.pagination {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: var(--space-1);
+  margin-top: var(--space-6);
+}
+
+.pagination__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  min-width: 40px;
+  height: 40px;
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: 999px;
+  background: var(--surface-3);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.pagination__btn:hover:not(:disabled) {
+  background: #3a3a3a;
+}
+
+.pagination__btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pagination__num[aria-current='page'] {
+  background: var(--yellow);
+  color: #000;
+}
+
+.pagination__gap {
+  padding: 0 var(--space-1);
+  color: var(--text-3);
+}
+
+/* ================= FILTRŲ JUOSTA ================= */
+
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+.filter-bar__search {
+  position: relative;
+  flex: 1 1 260px;
+}
+
+.filter-bar__search > .lucide {
+  position: absolute;
+  left: var(--space-3);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-3);
+}
+
+.filter-bar__search input {
+  padding-left: 38px;
+}
+
+.filter-bar__field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-2);
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.filter-bar__field select {
   width: auto;
-  min-height: 36px;
-  font-family: var(--font-mono);
-  font-size: 13px;
+  min-width: 150px;
+  border-radius: 999px;
+  padding-inline: var(--space-4);
 }
 
-.role-pill {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  padding: 4px 8px;
-  background: var(--ink);
-  color: var(--amber);
-}
+/* ================= RESPONSIVE ================= */
 
-/* ================= Mobilūs komponentų pakeitimai ================= */
-
-@media (max-width: 768px) {
-  .form-grid {
+@media (max-width: 900px) {
+  .form-grid,
+  .form--with-preview {
     grid-template-columns: 1fr;
   }
 
@@ -1495,84 +1399,25 @@ input[type='range'] {
     grid-column: auto;
   }
 
-  .form--with-preview {
-    grid-template-columns: 1fr;
-  }
-
   .form-preview {
     position: static;
     width: 140px;
+    margin-inline: auto;
   }
 
-  .ticket {
-    grid-template-columns: 72px 1fr;
+  .studio-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Telefonas: 10 žvaigždučių turi tilpti vienoje eilutėje */
+@media (max-width: 600px) {
+  .star-option {
+    padding: 1px;
   }
 
-  .ticket::before,
-  .ticket::after {
-    left: 60px;
-  }
-
-  .ticket__score {
-    font-size: 36px;
-  }
-
-  .ticket__main {
-    padding: var(--space-3) var(--space-4);
-  }
-
-  .ticket__title {
-    font-size: 22px;
-  }
-
-  .ticket--ten .ticket__title {
-    padding-right: 84px;
-  }
-
-  .filter-bar__field {
-    min-width: 0;
-    flex: 1 1 140px;
-  }
-
-  .modal__body {
-    padding: var(--space-4);
-  }
-
-  .modal__title {
-    font-size: 26px;
-  }
-
-  .rating-frame span {
-    height: 36px;
-    font-size: 16px;
-  }
-
-  .otp .otp__box {
-    width: 42px;
-  }
-
-  /* Lentelė telefone – kiekviena eilutė tampa kortele */
-  .table thead {
-    display: none;
-  }
-
-  .table tr {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: var(--space-1) var(--space-3);
-    padding: var(--space-3) var(--space-4);
-    border-top: 1px solid var(--paper-3);
-  }
-
-  .table td {
-    padding: 0;
-    border: 0;
-  }
-
-  .table td[data-label='Email'],
-  .table td[data-label='Joined'] {
-    grid-column: 1 / -1;
-    font-size: 13px;
-    color: var(--ink-3);
+  .star-option .lucide {
+    width: 22px;
+    height: 22px;
   }
 }

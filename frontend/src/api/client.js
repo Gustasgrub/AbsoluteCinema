@@ -58,17 +58,6 @@ export function endSession() {
   onSessionChange(null);
 }
 
-// Iššifruojame JWT vidurinę dalį (payload). Parašo čia netikriname – tai daro serveris.
-export function tokenClaims() {
-  if (!accessToken) return null;
-  try {
-    const payload = accessToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
-    return JSON.parse(atob(payload));
-  } catch {
-    return null;
-  }
-}
-
 // Naujas access žetonas pagal refresh slapuką
 export function refreshSession() {
   refreshing ??= fetch(`${API_URL}/auth/refresh`, {

@@ -89,7 +89,9 @@ class ApiTest extends TestCase
 
     public function test_invalid_query_parameters_return_400(): void
     {
-        $this->getJson('/api/v1/movies?page=abc&genre=opera')
+        $studio = $this->studio();
+
+        $this->getJson("/api/v1/studios/{$studio->id}/movies?page=abc&genre=opera")
             ->assertStatus(400)
             ->assertJsonStructure(['errors' => ['page', 'genre']]);
     }
@@ -192,7 +194,7 @@ class ApiTest extends TestCase
             ->assertNoContent();
 
         // Po atsijungimo neveikia nei access, nei refresh žetonas
-        $this->getJson('/api/v1/auth/me', ['Authorization' => "Bearer {$accessToken}"])->assertUnauthorized();
+        $this->postJson('/api/v1/auth/logout', [], ['Authorization' => "Bearer {$accessToken}"])->assertUnauthorized();
         $this->withCredentials()->withUnencryptedCookie($cookieName, $secondRefresh)->postJson('/api/v1/auth/refresh')->assertUnauthorized();
     }
 

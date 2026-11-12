@@ -19,7 +19,7 @@ return [
     'allowed_headers' => ['*'],
 
     // Kad frontend JavaScript galėtų perskaityti šias atsakymo antraštes
-    'exposed_headers' => ['Location', 'ETag'],
+    'exposed_headers' => ['Location'],
 
     'max_age' => 600,
 

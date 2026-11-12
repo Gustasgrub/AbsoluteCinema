@@ -22,9 +22,9 @@ class User extends Authenticatable
     public const ROLES = [self::ROLE_MEMBER, self::ROLE_ADMIN];
 
     // "role" sąmoningai NĖRA $fillable – registruojantis negalima pasiskirti administratoriaus rolės
-    protected $fillable = ['name', 'email', 'password', 'bio'];
+    protected $fillable = ['name', 'email', 'password'];
 
-    protected $hidden = ['password', 'two_factor_secret'];
+    protected $hidden = ['password'];
 
     protected $attributes = ['role' => self::ROLE_MEMBER];
 
@@ -32,8 +32,6 @@ class User extends Authenticatable
     {
         return [
             'password' => 'hashed',                 // slaptažodis automatiškai užkoduojamas bcrypt
-            'two_factor_secret' => 'encrypted',     // 2FA raktas DB saugomas užšifruotas (APP_KEY)
-            'two_factor_enabled_at' => 'datetime',
         ];
     }
 
@@ -50,10 +48,5 @@ class User extends Authenticatable
     public function isAdmin(): bool
     {
         return $this->role === self::ROLE_ADMIN;
-    }
-
-    public function hasTwoFactorEnabled(): bool
-    {
-        return $this->two_factor_enabled_at !== null;
     }
 }

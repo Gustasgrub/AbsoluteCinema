@@ -1,17 +1,18 @@
 import { useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router';
-import { Building2, Film, LogIn, LogOut, Projector, ShieldCheck, Ticket } from 'lucide-react';
+import { Building2, House, LogIn, LogOut, Menu, UserPlus, X } from 'lucide-react';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { useToast } from '../Toast.jsx';
 import Logo from '../Logo.jsx';
 import Avatar from '../Avatar.jsx';
 
 /*
- * Antraštė (header). Kompiuteryje – horizontalus meniu,
- * telefone (< 768px, žr. styles/layout.css) – "hamburger" mygtukas, kuris atidaro meniu.
+ * Antraštė (header): logotipas, meniu ir paskyra.
+ * Kompiuteryje meniu matomas vienoje eilutėje,
+ * telefone (< 900px, žr. styles/layout.css) – "Menu" mygtukas atidaro išskleidžiamą sąrašą.
  */
 export default function Header() {
-  const { user, isAdmin, logout } = useAuth();
+  const { user, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const toast = useToast();
   const navigate = useNavigate();
@@ -21,7 +22,7 @@ export default function Header() {
   async function handleLogout() {
     closeMenu();
     await logout();
-    toast.info('You left the theatre. See you next screening!');
+    toast.info('You are signed out. See you at the next screening!');
     navigate('/');
   }
 
@@ -34,63 +35,52 @@ export default function Header() {
 
         <button
           type="button"
-          className="hamburger"
-          aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+          className="menu-btn"
           aria-expanded={menuOpen}
           aria-controls="site-menu"
           onClick={() => setMenuOpen((open) => !open)}
         >
-          <span />
-          <span />
-          <span />
+          {menuOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
+          <span>Menu</span>
         </button>
 
         <div id="site-menu" className="site-menu">
           <nav className="site-nav" aria-label="Main">
+            {/* end – "Home" aktyvus tik pačiame pagrindiniame puslapyje, ne visuose */}
             <NavLink to="/" end className="site-nav__link" onClick={closeMenu}>
-              <Projector aria-hidden="true" /> Now showing
+              <House aria-hidden="true" /> Home
             </NavLink>
             <NavLink to="/studios" className="site-nav__link" onClick={closeMenu}>
               <Building2 aria-hidden="true" /> Studios
             </NavLink>
-            <NavLink to="/catalogue" className="site-nav__link" onClick={closeMenu}>
-              <Film aria-hidden="true" /> Catalogue
-            </NavLink>
-            {isAdmin && (
-              <NavLink to="/admin/users" className="site-nav__link" onClick={closeMenu}>
-                <ShieldCheck aria-hidden="true" /> Admin
-              </NavLink>
-            )}
           </nav>
+
+          <span className="site-menu__divider" aria-hidden="true" />
 
           <div className="site-account">
             {user ? (
               <>
                 <Link to={`/users/${user.id}`} className="site-account__me" onClick={closeMenu}>
                   <Avatar name={user.name} id={user.id} size="sm" />
-                  <span>
-                    <strong>{user.name}</strong>
-                    <small>{user.role}</small>
-                  </span>
+                  <span>{user.name}</span>
                 </Link>
-                <button type="button" className="btn btn--on-dark btn--icon" onClick={handleLogout} aria-label="Log out" title="Log out">
-                  <LogOut aria-hidden="true" />
+                <button type="button" className="site-nav__link" onClick={handleLogout} title="Sign out">
+                  <LogOut aria-hidden="true" /> Sign out
                 </button>
               </>
             ) : (
               <>
                 <NavLink to="/login" className="site-nav__link" onClick={closeMenu}>
-                  <LogIn aria-hidden="true" /> Log in
+                  <LogIn aria-hidden="true" /> Sign in
                 </NavLink>
-                <Link to="/register" className="btn btn--ticket" onClick={closeMenu}>
-                  <Ticket aria-hidden="true" /> Get a ticket
+                <Link to="/register" className="btn btn--primary btn--sm" onClick={closeMenu}>
+                  <UserPlus aria-hidden="true" /> Join free
                 </Link>
               </>
             )}
           </div>
         </div>
       </div>
-      <div className="sprockets" aria-hidden="true" />
     </header>
   );
 }

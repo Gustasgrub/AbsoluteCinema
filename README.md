@@ -77,15 +77,15 @@ Sistemos talpinimui yra naudojama **Railway** debesijos platforma. Kiekviena sis
 
 | Dalis | Technologija | Katalogas |
 |---|---|---|
-| Serverio pusė (API) | PHP 8.4 · Laravel 13 · JWT (firebase/php-jwt) · 2FA (google2fa) | [`backend/`](backend) |
-| Duomenų bazė | MySQL 8 (lokaliai galima SQLite) | [`backend/database/`](backend/database) |
+| Serverio pusė (API) | PHP 8.4 · Laravel 13 · JWT (firebase/php-jwt) | [`backend/`](backend) |
+| Duomenų bazė | PostgreSQL 17 (lokaliai galima SQLite) | [`backend/database/`](backend/database) |
 | Kliento pusė | React 19 · React Router · Vite · gryna CSS | [`frontend/`](frontend) |
 | API specifikacija | OpenAPI 3.0 + Swagger UI (`/docs`) | [`backend/public/openapi.yaml`](backend/public/openapi.yaml) |
-| Testai | Postman kolekcija (66 užklausos, 140 testų) · PHPUnit | [`postman/`](postman), [`backend/tests/`](backend/tests) |
-| Diegimas | Docker · Railway (FrankenPHP + Caddy + MySQL) | `Dockerfile`, [`docker-compose.yml`](docker-compose.yml) |
+| Testai | Postman kolekcija (53 užklausos, 114 testų) · PHPUnit | [`postman/`](postman), [`backend/tests/`](backend/tests) |
+| Diegimas | Docker · Render (FrankenPHP + Caddy + PostgreSQL) | `Dockerfile`, [`docker-compose.yml`](docker-compose.yml), [`render.yaml`](render.yaml) |
 
 ```
- Naršyklė ──HTTPS──▶ frontend (Caddy: React failai + /api proxy) ──HTTP──▶ backend (FrankenPHP + Laravel API) ──ORM──▶ MySQL
+ Naršyklė ──HTTPS──▶ frontend (Caddy: React failai + /api proxy) ──HTTPS──▶ backend (FrankenPHP + Laravel API) ──ORM──▶ PostgreSQL
 ```
 
 ---
@@ -100,7 +100,7 @@ Reikia: PHP 8.4+, Composer, Node.js 22+.
 # Backend (API) – http://localhost:8000
 cd backend
 composer install
-cp .env.example .env            # DB_CONNECTION=sqlite – jei nėra MySQL (arba nurodykite MySQL duomenis)
+cp .env.example .env            # DB_CONNECTION=sqlite – jei nėra PostgreSQL (arba nurodykite PostgreSQL duomenis)
 php artisan key:generate
 php artisan jwt:secret          # sugeneruoja JWT_SECRET į .env
 php artisan migrate:fresh --seed
@@ -113,9 +113,9 @@ npm run dev
 ```
 
 Naudojant SQLite: `.env` faile `DB_CONNECTION=sqlite`, o `DB_HOST/DB_DATABASE...` eilutes užkomentuokite.
-Naudojant MySQL: sukurkite DB `absolutecinema` ir `.env` nurodykite `DB_HOST`, `DB_USERNAME`, `DB_PASSWORD`.
+Naudojant PostgreSQL: sukurkite DB `absolutecinema` ir `.env` nurodykite `DB_HOST`, `DB_USERNAME`, `DB_PASSWORD`.
 
-### B variantas – Docker (MySQL + API + frontend viena komanda)
+### B variantas – Docker (PostgreSQL + API + frontend viena komanda)
 
 ```bash
 docker compose up --build
@@ -150,7 +150,7 @@ Bazinis adresas: `/api/v1`. Visi atsakymai – JSON. Klaidos – RFC 9457 „Pro
 |---|---|---|---|---|
 | GET | `/studios` | visi | 200 | 400 |
 | POST | `/studios` | admin | 201 | 400, 401, 403, 415, 422 |
-| GET | `/studios/{studio}` | visi | 200 (304) | 404 |
+| GET | `/studios/{studio}` | visi | 200 | 404 |
 | PUT / PATCH | `/studios/{studio}` | admin | 200 | 401, 403, 404, 422 |
 | DELETE | `/studios/{studio}` | admin | 204 | 401, 403, 404 |
 | GET | `/studios/{studio}/movies` | visi | 200 | 400, 404 |
@@ -163,44 +163,36 @@ Bazinis adresas: `/api/v1`. Visi atsakymai – JSON. Klaidos – RFC 9457 „Pro
 | GET | `/studios/{studio}/movies/{movie}/reviews/{review}` | visi | 200 | 404 |
 | PUT / PATCH | `/studios/{studio}/movies/{movie}/reviews/{review}` | tik autorius | 200 | 401, 403, 404, 422 |
 | DELETE | `/studios/{studio}/movies/{movie}/reviews/{review}` | autorius, admin | 204 | 401, 403, 404 |
-| GET | `/movies` | visi | 200 | 400 |
 | GET | `/dashboard` | visi | 200 | – |
-| GET | `/users` | admin | 200 | 401, 403 |
 | GET | `/users/{user}` | visi | 200 | 404 |
-| PATCH | `/users/{user}` | pats naudotojas / admin | 200 | 401, 403, 404, 422 |
 | DELETE | `/users/{user}` | admin (ne save) | 204 | 401, 403, 404 |
 | GET | `/users/{user}/reviews` | visi | 200 | 400, 404 |
 | POST | `/auth/register` | visi | 201 | 422, 429 |
 | POST | `/auth/login` | visi | 200 | 401, 422, 429 |
 | POST | `/auth/refresh` | turintys refresh slapuką | 200 | 401 |
 | POST | `/auth/logout` | prisijungę | 204 | 401 |
-| GET | `/auth/me` | prisijungę | 200 | 401 |
-| POST / DELETE | `/auth/two-factor` | prisijungę | 200 / 204 | 401, 409, 422 |
-| POST | `/auth/two-factor/confirm` | prisijungę | 200 | 401, 409, 422 |
-| POST | `/auth/two-factor/challenge` | visi | 200 | 401, 422, 429 |
 
 **Hierarchinis metodas per visus 3 objektus:** `GET /studios/1/movies/1/reviews`.
 Jei filmas nepriklauso nurodytai studijai (`/studios/2/movies/1`) – **404** (apimties valdymas per URL).
 
 **Puslapiavimas:** `?page=2&per_page=12` (max 50). Atsakyme `meta` (total, last_page…) ir `_links` (first, prev, next, last).
-**Filtravimas ir rikiavimas:** `/movies?genre=sci-fi&type=movie&year_from=2000&year_to=2020&min_rating=8&studio_id=4&search=nolan&sort=-rating`,
+**Filtravimas ir rikiavimas:** `/studios/1/movies?genre=drama&type=movie&year_from=1990&year_to=1999&search=nolan&sort=-rating`,
 `/studios?country=USA&founded_from=1980&sort=-movies`, `.../reviews?min_rating=7&spoilers=false&sort=-rating`.
 **Hypermedia (HATEOAS):** kiekvienas resursas turi `_links`. Veiksmų nuorodos (`update`, `delete`, `create_review`…)
 rodomos tik tada, kai dabartinis naudotojas tą veiksmą atlikti gali – frontend pagal jas sprendžia, kuriuos mygtukus rodyti.
-**Resursai iš kelių esybių:** `GET /dashboard` (Studio + Movie + Review + User) ir `GET /users/{id}` profilis (User + Review + Movie + Studio).
+**Resursas iš kelių esybių:** `GET /dashboard` (Studio + Movie + Review + User).
 
 ### Statuso kodai
 
 | Kodas | Kada |
 |---|---|
 | 200 / 201 / 204 | sėkmė / sukurta (+ `Location` antraštė) / ištrinta (be turinio) |
-| 304 | `If-None-Match` sutampa su `ETag` – duomenys nepasikeitė |
 | 400 | sugadintas JSON (`{"name": `) arba neteisingi query parametrai (`?page=abc`) |
 | 401 | nėra žetono, jis suklastotas, pasibaigęs arba atšauktas; blogas slaptažodis |
 | 403 | rolė ar savininkas neleidžia (narys kuria studiją, redaguoja svetimą recenziją) |
 | 404 | resurso nėra arba jis nepriklauso tėviniam resursui URL'e; nežinomas adresas |
 | 405 | netinkamas metodas (`POST /studios/1`), su `Allow` antrašte |
-| 409 | antra recenzija tam pačiam filmui; 2FA jau įjungta |
+| 409 | antra recenzija tam pačiam filmui |
 | 415 | turinys siunčiamas ne JSON formatu |
 | 422 | JSON geras, bet duomenys neteisingi (pvz. `rating: 11`) – su `errors` kiekvienam laukui |
 | 429 | per daug prisijungimo bandymų (10 / min.) |
@@ -228,17 +220,17 @@ raktu `JWT_SECRET` iš `.env`. Pakeitus vieną payload simbolį parašas nebesut
 - **Atnaujinimas:** gavęs 401, frontend kviečia `POST /auth/refresh`, gauna naują access žetoną ir pakartoja užklausą.
   Senas refresh žetonas atšaukiamas (rotacija); pakartotinai panaudojus seną – atšaukiamos visos naudotojo sesijos.
 - **Atsijungimas:** refresh žetonas ištrinamas iš DB, access žetono `jti` įrašomas į juodąjį sąrašą, slapukas išvalomas.
-- **Rolės:** svečias (neprisijungęs), narys (`member`), administratorius (`admin`). Rolė yra žetone; serveris ją sutikrina
-  su DB – jei administratorius pakeitė rolę, senas žetonas nebegalioja.
-- **Apsauga pagal ID:** recenziją redaguoti gali tik autorius, trinti – autorius arba administratorius.
-- **2FA (papildomai):** TOTP kodai (Google/Microsoft Authenticator). Profilyje → „Set up 2FA“ → QR kodas.
+- **Rolės:** svečias (neprisijungęs), narys (`member`), administratorius (`admin`). Rolė yra žetone; serveris ją dar sutikrina
+  su DB – jei rolė DB pasikeitė, senas žetonas nebegalioja.
+- **Apsauga pagal ID:** recenziją redaguoti gali tik autorius, trinti – autorius arba administratorius;
+  naudotojus šalina tik administratorius, bet ne save patį (`UserPolicy`).
 
 ---
 
 ## 8. Testavimas
 
 ```bash
-# Visa Postman kolekcija (66 užklausos, 140 testų, ~9 s). Backend turi veikti :8000
+# Visa Postman kolekcija (53 užklausos, 114 testų, ~7 s). Backend turi veikti :8000
 npx newman run postman/AbsoluteCinema.postman_collection.json -e postman/AbsoluteCinema.local.postman_environment.json
 
 # PHPUnit testai (atskira atminties DB)
@@ -247,7 +239,7 @@ cd backend && php artisan test
 
 Postman'e: *Import* → abu failai iš [`postman/`](postman) → pasirinkti aplinką „AbsoluteCinema – local“ → kolekcija → **Run**.
 Kolekcija sukuria savo testinius duomenis ir pabaigoje juos ištrina, todėl ją galima leisti daug kartų.
-Aplankas *7. Error cases* parodo 400, 401, 403, 404, 405, 409, 415, 422 atvejus.
+Aplankas *6. Error cases* parodo 400, 401, 403, 404, 405, 409, 415, 422 atvejus.
 
 ---
 
@@ -255,52 +247,50 @@ Aplankas *7. Error cases* parodo 400, 401, 403, 404, 405, 409, 415, 422 atvejus.
 
 Ekrano nuotraukos (kompiuteris ir telefonas): [`docs/screenshots/`](docs/screenshots).
 
-Dizaino idėja – **kino festivalio programėlė**: šiltas popierius, juodas „rašalas“, raudona uždanga ir gintarinės
-švieslentės lemputės. Antraštė – kino juosta su perforacija, poraštė – pabaigos titrai ant uždangos,
-recenzijos – kino bilietai, modaliniai langai – su klakete, profilis – festivalio akreditacija.
+Dizaino idėja – **IMDb stilius**: juodas fonas, tamsiai pilkos kortelės, geltonas logotipas, žvaigždutės ir
+pagrindiniai mygtukai, mėlynos nuorodos, skyrių antraštės su geltonu brūkšniu („| Top rated >“).
+Pagrindiniame puslapyje – geriausiai įvertinti filmai, naujausios recenzijos, studijos ir suvestinė (`GET /dashboard`);
+filmo puslapyje – išlietas plakato fonas, „AC rating“ blokas, recenzijos įvertinamos žvaigždutėmis 1–10;
+studijos puslapyje – filmų sąrašas su filtrais (tipas, žanras, dešimtmetis); profilyje – naudotojo recenzijos.
 Filmų plakatai generuojami SVG pagal žanrą (arba rodomas `poster_url` paveikslėlis).
 
 | Reikalavimas | Kur |
 |---|---|
 | CRUD visiems 3 objektams | Studijos – `StudiosPage`/`StudioPage`, filmai – `StudioPage`/`MoviePage`, recenzijos – `MoviePage` |
 | Registracija, prisijungimas, žetonų atnaujinimas | `pages/LoginPage.jsx`, `pages/RegisterPage.jsx`, `api/client.js` (401 → refresh → kartojama) |
-| ≥ 4 įvesties elementai | text, email, password, textarea, number, date, url, **color**, **range**, select, radio, checkbox, datalist |
+| ≥ 4 įvesties elementai | text, email, password, search, textarea, number, date, url, **color**, select, radio, checkbox, datalist |
 | Paveikslėliai, prisitaikantys prie lango | `public/images/*` + `img { max-width: 100% }` (`styles/base.css`), SVG plakatai |
 | Vektorinės ikonos meniu | [lucide-react](https://lucide.dev) (SVG), logotipas – `components/Logo.jsx` |
-| Header / content / footer skirtingi | `styles/layout.css` (juodas header, popierinis turinys, raudonas footer) |
-| Modaliniai langai | `components/Modal.jsx` (kūrimo, redagavimo, trynimo, 2FA formos) |
-| Animacijos | visos `styles/animations.css` (puslapio perėjimas, lemputės, skaitliukai, klaketė, krovimas 3-2-1…) |
+| Header / content / footer skirtingi | `styles/layout.css` (header su logotipu ir meniu, juodas turinys, pilkas footer) |
+| Modaliniai langai | `components/Modal.jsx` (kūrimo, redagavimo ir trynimo formos) |
+| Animacijos | visos `styles/animations.css` (puslapio perėjimas, „Ken Burns“ fonas, krovimo žiedas, modalas, pranešimas, meniu išsiskleidimas) |
 | Nestandartinis šriftas | Google Fonts `index.html` → kintamieji `styles/tokens.css` |
 | Grįžtamasis ryšys be `alert()` | `components/Toast.jsx` |
-| Lūžio taškas + hamburger | `@media (max-width: 768px)` – `styles/layout.css`, mygtukas – `components/layout/Header.jsx` |
+| Lūžio taškai + „Menu“ mygtukas | tik du: `@media (max-width: 900px)` ir `600px` – `styles/layout.css`, `components.css`, `pages.css`; mygtukas – `components/layout/Header.jsx` |
 
 ---
 
-## 10. Diegimas (Railway)
+## 10. Diegimas (Render)
+
+Visa sistema aprašyta [`render.yaml`](render.yaml) (Render Blueprint): du nemokami Docker web servisai ir nemokama PostgreSQL.
 
 1. Įkelkite projektą į GitHub.
-2. Railway → **New Project** → **Database → MySQL**.
-3. **New → GitHub Repo** → šis repo → *Settings → Root Directory* `backend`, servisą pavadinkite `backend`. Kintamieji:
+2. Render → **New → Blueprint** → pasirinkite šią saugyklą. Render paklaus trijų reikšmių:
    ```
-   APP_KEY=base64:...                 # php artisan key:generate --show
-   JWT_SECRET=...                     # php artisan jwt:secret --show
-   APP_URL=https://<frontend domenas>
-   PORT=8080
-   FORCE_HTTPS=true
-   JWT_COOKIE_SECURE=true
-   DB_CONNECTION=mysql
-   DB_HOST=${{MySQL.MYSQLHOST}}
-   DB_PORT=${{MySQL.MYSQLPORT}}
-   DB_DATABASE=${{MySQL.MYSQLDATABASE}}
-   DB_USERNAME=${{MySQL.MYSQLUSER}}
-   DB_PASSWORD=${{MySQL.MYSQLPASSWORD}}
+   APP_KEY=base64:...                                     # php artisan key:generate --show
+   APP_URL=https://absolutecinema.onrender.com            # svetainės (frontend) adresas
+   API_UPSTREAM=https://absolutecinema-api.onrender.com   # API serviso adresas
    ```
-   Pirmo paleidimo metu automatiškai sukuriamos lentelės ir įkeliami pradiniai duomenys.
-4. **New → GitHub Repo** → tas pats repo → *Root Directory* `frontend`, servisas `frontend`. Kintamasis:
-   ```
-   API_UPSTREAM=http://${{backend.RAILWAY_PRIVATE_DOMAIN}}:8080
-   ```
-5. `frontend` → *Settings → Networking → Generate Domain*. (Jei reikia API Postman'ui – domeną galima sugeneruoti ir `backend`.)
+   `JWT_SECRET` sugeneruojamas automatiškai, `DB_URL` paimamas iš sukurtos duomenų bazės.
+   Jei Render suteikė kitus adresus (pvz. su priesaga), pataisykite `APP_URL` ir `API_UPSTREAM` servisų *Environment* skiltyje.
+3. Pirmo paleidimo metu automatiškai sukuriamos lentelės ir įkeliami pradiniai duomenys.
+4. Postman'ui: `postman/AbsoluteCinema.production.postman_environment.json` → `baseUrl` = API serviso adresas + `/api/v1`.
+
+Nemokamo plano ypatumai:
+- Servisai „užmiega“ po 15 min. be užklausų, pirmas atidarymas trunka ~1 min. – prieš gynimą svetainę atidarykite iš anksto.
+- Nemokamas web servisas negali priimti srauto privačiu tinklu, todėl Caddy API pasiekia viešu HTTPS adresu (`API_UPSTREAM`);
+  API prie duomenų bazės jungiasi privačiu tinklu.
+- Nemokama PostgreSQL galioja 30 dienų nuo sukūrimo (dar 14 d. ją galima atnaujinti į mokamą planą).
 
 ---
 
@@ -312,7 +302,7 @@ Filmų plakatai generuojami SVG pagal žanrą (arba rodomas `poster_url` paveiks
 - Modeliai, ryšiai, filtrai: [`app/Models/`](backend/app/Models) · DB struktūra: [`database/migrations/`](backend/database/migrations)
 - JSON forma ir `_links`: [`app/Http/Resources/`](backend/app/Http/Resources), [`app/Support/Link.php`](backend/app/Support/Link.php), [`app/Support/Paginated.php`](backend/app/Support/Paginated.php)
 - Klaidos → statuso kodai: [`app/Support/ApiError.php`](backend/app/Support/ApiError.php) (prijungta [`bootstrap/app.php`](backend/bootstrap/app.php))
-- 400 / 415: [`app/Http/Middleware/ValidateJsonBody.php`](backend/app/Http/Middleware/ValidateJsonBody.php) · ETag / 304: [`AddEtagHeader.php`](backend/app/Http/Middleware/AddEtagHeader.php)
+- 400 / 415: [`app/Http/Middleware/ValidateJsonBody.php`](backend/app/Http/Middleware/ValidateJsonBody.php)
 
 **Naujo objekto su CRUD pridėjimas** (pvz. „Apdovanojimas“ filmui):
 1. `php artisan make:model Award -m` → migracijoje laukai + `foreignId('movie_id')->constrained()->cascadeOnDelete()`
@@ -332,9 +322,9 @@ Filmų plakatai generuojami SVG pagal žanrą (arba rodomas `poster_url` paveiks
 - Register / login / refresh / logout: [`app/Http/Controllers/Api/AuthController.php`](backend/app/Http/Controllers/Api/AuthController.php)
 - Teisės pagal rolę ir ID: [`app/Policies/`](backend/app/Policies)
 - Apsauga nuo grėsmių: SQL injekcijos – Eloquent parametrai (niekur nėra SQL eilučių sujungimo);
-  teisių eskalacija – `role` nėra `$fillable`, `UserUpdateRequest` draudžia keisti rolę; slaptažodžių spėliojimas –
+  teisių eskalacija – `role` nėra `$fillable` (registruojantis negalima pasiskirti administratoriaus rolės); slaptažodžių spėliojimas –
   užklausų limitas `AppServiceProvider`; XSS – React automatiškai „escape'ina“ tekstą, refresh žetonas `HttpOnly`;
-  CSRF – `SameSite=Strict`; slaptažodžiai – bcrypt; 2FA raktas DB užšifruotas.
+  CSRF – `SameSite=Strict`; slaptažodžiai – bcrypt.
 
 **Naudotojo sąsaja (3 lab.)**
 - Struktūra: `src/pages` (puslapiai), `src/components` (pakartotinai naudojami), `src/hooks/useApi.js` (duomenų gavimas),

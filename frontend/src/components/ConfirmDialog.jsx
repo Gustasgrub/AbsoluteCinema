@@ -16,12 +16,12 @@ export default function ConfirmDialog({ open, title, message, confirmLabel = 'De
   }
 
   return (
-    <Modal open={open} title={title} kicker="Final cut" onClose={onClose} size="sm">
+    <Modal open={open} title={title} kicker="Are you sure?" onClose={onClose} size="sm">
       <p className="confirm__message">{message}</p>
       <div className="form-actions">
-        <button type="button" className="btn" onClick={onClose}>Keep it</button>
+        <button type="button" className="btn" onClick={onClose}>Cancel</button>
         <button type="button" className="btn btn--danger" onClick={handleConfirm} disabled={busy}>
-          <Trash2 aria-hidden="true" /> {busy ? 'Cutting…' : confirmLabel}
+          <Trash2 aria-hidden="true" /> {busy ? 'Deleting…' : confirmLabel}
         </button>
       </div>
     </Modal>

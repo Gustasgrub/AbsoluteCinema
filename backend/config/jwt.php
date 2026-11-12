@@ -25,9 +25,6 @@ return [
     'access_ttl' => (int) env('JWT_ACCESS_TTL', 15),
     'refresh_ttl' => (int) env('JWT_REFRESH_TTL', 60 * 24 * 14),
 
-    // Kiek minučių galioja tarpinis žetonas tarp slaptažodžio ir 2FA kodo įvedimo
-    'two_factor_ttl' => 5,
-
     // Refresh žetono slapukas
     'cookie' => [
         'name' => 'ac_refresh_token',

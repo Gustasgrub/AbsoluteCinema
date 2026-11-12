@@ -43,7 +43,7 @@ class Review extends Model
                 'contains_spoilers', filter_var($filters['spoilers'], FILTER_VALIDATE_BOOLEAN)   // "true"/"1" → true
             ))
             ->when($filters['search'] ?? null, fn ($q, $search) => $q->where(
-                fn ($q) => $q->where('title', 'like', "%{$search}%")->orWhere('body', 'like', "%{$search}%")
+                fn ($q) => $q->whereLike('title', "%{$search}%")->orWhereLike('body', "%{$search}%")
             ));
     }
 

@@ -23,8 +23,6 @@ info:
 
     **Hypermedia:** every resource contains `_links`. Action links (`update`, `delete`, `create_review`, …)
     appear only when the current user is allowed to perform that action.
-
-    **Caching:** `GET` responses carry an `ETag`. Repeat the request with `If-None-Match` to get `304 Not Modified`.
 security:
   - {}
   - bearerAuth: []
@@ -32,15 +30,13 @@ servers:
   - url: http://localhost:8000/api/v1
     description: Local development
   - url: https://{host}/api/v1
-    description: Production (Railway)
+    description: Production (Render)
     variables:
       host:
-        default: absolutecinema.up.railway.app
+        default: absolutecinema-api.onrender.com
 tags:
   - name: Auth
     description: Registration, login, token refresh and logout
-  - name: Two-factor
-    description: Optional TOTP two-factor authentication
   - name: Studios
     description: Film studios – top of the hierarchy
   - name: Movies
@@ -48,32 +44,11 @@ tags:
   - name: Reviews
     description: Member reviews of a movie
   - name: Users
-    description: Profiles and user management
+    description: User profiles; administrators can delete users
   - name: Dashboard
     description: Composite resources for the home page
 
 paths:
-  /:
-    get:
-      tags: [Dashboard]
-      summary: API entry point with links to the main resources
-      operationId: getRoot
-      responses:
-        '200':
-          description: Links to the main collections (HATEOAS entry point)
-          content:
-            application/json:
-              example:
-                name: AbsoluteCinema API
-                version: v1
-                documentation: http://localhost:8000/docs
-                _links:
-                  self: { href: http://localhost:8000/api/v1, method: GET }
-                  studios: { href: http://localhost:8000/api/v1/studios, method: GET }
-                  movies: { href: http://localhost:8000/api/v1/movies, method: GET }
-                  login: { href: http://localhost:8000/api/v1/auth/login, method: POST }
-        '429': { $ref: '#/components/responses/TooManyRequests' }
-
   # ------------------------------------------------------------------ AUTH
   /auth/register:
     post:
@@ -104,9 +79,7 @@ paths:
     post:
       tags: [Auth]
       summary: Log in with email and password
-      description: |
-        Returns tokens, or – if the user enabled two-factor authentication – a `two_factor_token`
-        that must be exchanged at `POST /auth/two-factor/challenge` together with a 6-digit code.
+      description: Returns a short-lived access token in the body and sets the refresh-token cookie.
       operationId: login
       requestBody:
         required: true
@@ -118,15 +91,12 @@ paths:
               member: { summary: Seeded member, value: { email: member@absolutecinema.test, password: Member123! } }
       responses:
         '200':
-          description: Logged in (or 2FA code required)
+          description: Logged in
           headers:
             Set-Cookie: { $ref: '#/components/headers/RefreshCookie' }
           content:
             application/json:
-              schema:
-                oneOf:
-                  - $ref: '#/components/schemas/TokenResponse'
-                  - $ref: '#/components/schemas/TwoFactorRequired'
+              schema: { $ref: '#/components/schemas/TokenResponse' }
               examples:
                 tokens:
                   summary: Normal login
@@ -134,10 +104,7 @@ paths:
                     token_type: Bearer
                     access_token: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwOi8vbG9jYWxob3N0OjgwMDAiLCJzdWIiOiIzIiwicm9sZSI6Im1lbWJlciJ9.signature
                     expires_in: 900
-                    user: { id: 3, name: Rasa Kairytė, role: member, bio: Animation devotee., email: rasa@absolutecinema.test, two_factor_enabled: false, joined_at: '2026-11-07T14:03:30+00:00' }
-                twoFactor:
-                  summary: User has 2FA enabled
-                  value: { two_factor_required: true, two_factor_token: eyJ0eXAiOiJKV1Qi..., expires_in: 300 }
+                    user: { id: 3, name: Rasa Kairytė, role: member, email: rasa@absolutecinema.test, joined_at: '2026-11-07T14:03:30+00:00' }
         '400': { $ref: '#/components/responses/MalformedJson' }
         '401':
           description: Wrong email or password
@@ -183,114 +150,6 @@ paths:
       responses:
         '204': { description: Logged out. The refresh cookie is cleared. }
         '401': { $ref: '#/components/responses/Unauthorized' }
-
-  /auth/me:
-    get:
-      tags: [Auth]
-      summary: Current user
-      operationId: me
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: The logged-in user (including private fields)
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data: { $ref: '#/components/schemas/User' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-
-  /auth/two-factor:
-    post:
-      tags: [Two-factor]
-      summary: Start 2FA setup – returns a secret and an otpauth:// URL for a QR code
-      operationId: enableTwoFactor
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Secret generated (2FA is not active until confirmed)
-          content:
-            application/json:
-              example:
-                data:
-                  secret: JBSWY3DPEHPK3PXP
-                  otpauth_url: otpauth://totp/AbsoluteCinema:rasa%40absolutecinema.test?secret=JBSWY3DPEHPK3PXP&issuer=AbsoluteCinema&algorithm=SHA1&digits=6&period=30
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '409': { $ref: '#/components/responses/Conflict' }
-    delete:
-      tags: [Two-factor]
-      summary: Disable 2FA (requires a current code)
-      operationId: disableTwoFactor
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/CodeInput' }
-            example: { code: '123456' }
-      responses:
-        '204': { description: 2FA disabled }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '409': { $ref: '#/components/responses/Conflict' }
-        '422': { $ref: '#/components/responses/ValidationError' }
-
-  /auth/two-factor/confirm:
-    post:
-      tags: [Two-factor]
-      summary: Confirm the setup with a code from the authenticator app
-      operationId: confirmTwoFactor
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/CodeInput' }
-            example: { code: '123456' }
-      responses:
-        '200':
-          description: 2FA enabled
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data: { $ref: '#/components/schemas/User' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '409': { $ref: '#/components/responses/Conflict' }
-        '422': { $ref: '#/components/responses/ValidationError' }
-
-  /auth/two-factor/challenge:
-    post:
-      tags: [Two-factor]
-      summary: Second login step – exchange the two_factor_token and a code for tokens
-      operationId: twoFactorChallenge
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [two_factor_token, code]
-              properties:
-                two_factor_token: { type: string }
-                code: { type: string, pattern: '^[0-9]{6}$' }
-            example: { two_factor_token: eyJ0eXAiOiJKV1Qi..., code: '123456' }
-      responses:
-        '200':
-          description: Logged in
-          headers:
-            Set-Cookie: { $ref: '#/components/headers/RefreshCookie' }
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/TokenResponse' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '422': { $ref: '#/components/responses/ValidationError' }
-        '429': { $ref: '#/components/responses/TooManyRequests' }
 
   # ------------------------------------------------------------------ DASHBOARD
   /dashboard:
@@ -363,17 +222,12 @@ paths:
       tags: [Studios]
       summary: Get a studio
       operationId: getStudio
-      parameters:
-        - $ref: '#/components/parameters/IfNoneMatch'
       responses:
         '200':
           description: The studio
-          headers:
-            ETag: { $ref: '#/components/headers/ETag' }
           content:
             application/json:
               schema: { $ref: '#/components/schemas/StudioEnvelope' }
-        '304': { $ref: '#/components/responses/NotModified' }
         '404': { $ref: '#/components/responses/NotFound' }
     put:
       tags: [Studios]
@@ -432,30 +286,6 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
 
   # ------------------------------------------------------------------ MOVIES
-  /movies:
-    get:
-      tags: [Movies]
-      summary: Catalogue of all movies and series across studios (search & filters)
-      operationId: listAllMovies
-      parameters:
-        - $ref: '#/components/parameters/Page'
-        - $ref: '#/components/parameters/PerPage'
-        - $ref: '#/components/parameters/MovieSearch'
-        - { name: studio_id, in: query, schema: { type: integer }, example: 1 }
-        - $ref: '#/components/parameters/Genre'
-        - $ref: '#/components/parameters/MovieType'
-        - $ref: '#/components/parameters/YearFrom'
-        - $ref: '#/components/parameters/YearTo'
-        - $ref: '#/components/parameters/MinRating'
-        - $ref: '#/components/parameters/MovieSort'
-      responses:
-        '200':
-          description: A page of movies
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/MoviePage' }
-        '400': { $ref: '#/components/responses/InvalidQuery' }
-
   /studios/{studio}/movies:
     parameters:
       - $ref: '#/components/parameters/StudioId'
@@ -471,7 +301,6 @@ paths:
         - $ref: '#/components/parameters/MovieType'
         - $ref: '#/components/parameters/YearFrom'
         - $ref: '#/components/parameters/YearTo'
-        - $ref: '#/components/parameters/MinRating'
         - $ref: '#/components/parameters/MovieSort'
       responses:
         '200':
@@ -525,12 +354,9 @@ paths:
       responses:
         '200':
           description: The movie
-          headers:
-            ETag: { $ref: '#/components/headers/ETag' }
           content:
             application/json:
               schema: { $ref: '#/components/schemas/MovieEnvelope' }
-        '304': { $ref: '#/components/responses/NotModified' }
         '404': { $ref: '#/components/responses/NotFound' }
     put:
       tags: [Movies]
@@ -720,74 +546,23 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
 
   # ------------------------------------------------------------------ USERS
-  /users:
-    get:
-      tags: [Users]
-      summary: List users (admin)
-      operationId: listUsers
-      security:
-        - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/Page'
-        - $ref: '#/components/parameters/PerPage'
-        - { name: search, in: query, description: Name or email, schema: { type: string } }
-        - { name: role, in: query, schema: { type: string, enum: [member, admin] } }
-      responses:
-        '200':
-          description: A page of users
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/UserPage' }
-        '400': { $ref: '#/components/responses/InvalidQuery' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-
   /users/{user}:
     parameters:
       - $ref: '#/components/parameters/UserId'
     get:
       tags: [Users]
-      summary: Public profile (built from User + Review + Movie + Studio)
-      operationId: getProfile
+      summary: User profile (name, role, number of reviews)
+      operationId: getUser
       responses:
         '200':
-          description: Profile with statistics and recent reviews
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/ProfileEnvelope' }
-        '404': { $ref: '#/components/responses/NotFound' }
-    patch:
-      tags: [Users]
-      summary: Update a profile (yourself) or a role (admin, other users only)
-      operationId: updateUser
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                name: { type: string, minLength: 2, maxLength: 50 }
-                bio: { type: string, maxLength: 500, nullable: true }
-                role: { type: string, enum: [member, admin], description: 'Admin only, and not for their own account' }
-            examples:
-              profile: { summary: Member edits own profile, value: { bio: Horror after midnight. } }
-              role: { summary: Admin promotes a member, value: { role: admin } }
-      responses:
-        '200':
-          description: Updated user
+          description: The user. `email` is included only for the user themself.
           content:
             application/json:
               schema:
                 type: object
                 properties:
                   data: { $ref: '#/components/schemas/User' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
-        '422': { $ref: '#/components/responses/ValidationError' }
     delete:
       tags: [Users]
       summary: Delete a user and their reviews (admin; not your own account)
@@ -817,6 +592,7 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ReviewPage' }
+        '400': { $ref: '#/components/responses/InvalidQuery' }
         '404': { $ref: '#/components/responses/NotFound' }
 
 components:
@@ -837,10 +613,6 @@ components:
       description: URL of the created resource
       schema: { type: string, format: uri }
       example: http://localhost:8000/api/v1/studios/8
-    ETag:
-      description: Fingerprint of the response body; send it back in If-None-Match
-      schema: { type: string }
-      example: '"5d41402abc4b2a76b9719d911017c592"'
     RefreshCookie:
       description: The refresh token cookie
       schema: { type: string }
@@ -853,7 +625,6 @@ components:
     UserId: { name: user, in: path, required: true, schema: { type: integer }, example: 3 }
     Page: { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
     PerPage: { name: per_page, in: query, schema: { type: integer, minimum: 1, maximum: 50, default: 12 } }
-    IfNoneMatch: { name: If-None-Match, in: header, required: false, description: ETag from a previous response, schema: { type: string } }
     MovieSearch: { name: search, in: query, description: Part of the title or director, schema: { type: string }, example: nolan }
     Genre:
       name: genre
@@ -863,17 +634,14 @@ components:
       name: type
       in: query
       schema: { type: string, enum: [movie, series] }
-    YearFrom: { name: year_from, in: query, schema: { type: integer }, example: 2000 }
-    YearTo: { name: year_to, in: query, schema: { type: integer }, example: 2020 }
-    MinRating: { name: min_rating, in: query, description: Minimum average rating, schema: { type: number, minimum: 1, maximum: 10 }, example: 8 }
+    YearFrom: { name: year_from, in: query, description: Released in this year or later, schema: { type: integer }, example: 1990 }
+    YearTo: { name: year_to, in: query, description: Released in this year or earlier, schema: { type: integer }, example: 1999 }
     MovieSort:
       name: sort
       in: query
       schema: { type: string, enum: [title, -title, release_date, -release_date, rating, -rating, reviews, -reviews], default: title }
 
   responses:
-    NotModified:
-      description: The resource has not changed since the ETag in If-None-Match (empty body)
     MalformedJson:
       description: The body is not valid JSON or not a JSON object
       content:
@@ -911,12 +679,6 @@ components:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problem' }
           example: { type: about:blank, title: Not Found, status: 404, detail: 'Studio #999 was not found.' }
-    Conflict:
-      description: The request conflicts with the current state
-      content:
-        application/problem+json:
-          schema: { $ref: '#/components/schemas/Problem' }
-          example: { type: about:blank, title: Conflict, status: 409, detail: Two-factor authentication is already enabled. }
     UnsupportedMediaType:
       description: The body is not sent as application/json
       content:
@@ -1203,39 +965,12 @@ components:
         id: { type: integer, example: 3 }
         name: { type: string, example: Rasa Kairytė }
         role: { type: string, enum: [member, admin], example: member }
-        bio: { type: string, nullable: true }
-        email: { type: string, description: Only for the user themself or an admin }
-        two_factor_enabled: { type: boolean, description: Only for the user themself or an admin }
-        reviews_count: { type: integer, example: 15 }
+        email: { type: string, description: Only for the user themself, example: rasa@absolutecinema.test }
+        reviews_count: { type: integer, description: 'Only in GET /users/{user}', example: 15 }
         joined_at: { type: string, format: date-time }
         _links:
           type: object
           additionalProperties: { $ref: '#/components/schemas/Link' }
-    UserPage:
-      type: object
-      properties:
-        data: { type: array, items: { $ref: '#/components/schemas/User' } }
-        meta: { $ref: '#/components/schemas/PaginationMeta' }
-        _links: { $ref: '#/components/schemas/PaginationLinks' }
-    ProfileEnvelope:
-      type: object
-      properties:
-        data:
-          allOf:
-            - $ref: '#/components/schemas/User'
-            - type: object
-              properties:
-                stats:
-                  type: object
-                  properties:
-                    reviews_count: { type: integer, example: 15 }
-                    average_rating: { type: number, nullable: true, example: 8.9 }
-                    favorite_genre: { type: string, nullable: true, example: comedy }
-                    rating_distribution:
-                      type: object
-                      description: How many times each score 1–10 was given
-                      example: { '1': 0, '2': 0, '3': 0, '4': 0, '5': 0, '6': 0, '7': 2, '8': 3, '9': 7, '10': 3 }
-                recent_reviews: { type: array, items: { $ref: '#/components/schemas/Review' } }
     Dashboard:
       type: object
       properties:
@@ -1272,11 +1007,6 @@ components:
       properties:
         email: { type: string, format: email }
         password: { type: string }
-    CodeInput:
-      type: object
-      required: [code]
-      properties:
-        code: { type: string, pattern: '^[0-9]{6}$', description: 6-digit code from the authenticator app }
     TokenResponse:
       type: object
       properties:
@@ -1284,9 +1014,3 @@ components:
         access_token: { type: string, description: 'JWT (HS256). Payload: iss, sub, role, name, typ, iat, exp, jti' }
         expires_in: { type: integer, description: Seconds until the access token expires, example: 900 }
         user: { $ref: '#/components/schemas/User' }
-    TwoFactorRequired:
-      type: object
-      properties:
-        two_factor_required: { type: boolean, example: true }
-        two_factor_token: { type: string, description: Short-lived token for POST /auth/two-factor/challenge }
-        expires_in: { type: integer, example: 300 }

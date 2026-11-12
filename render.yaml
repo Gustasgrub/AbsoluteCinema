@@ -1,0 +1,55 @@
+# Render Blueprint – visa AbsoluteCinema sistema viename faile.
+# Render → New → Blueprint → pasirinkti šią GitHub saugyklą. Sukuriami 3 servisai (visi nemokami):
+#   absolutecinema-api  – Laravel API (Docker, FrankenPHP)
+#   absolutecinema      – React svetainė (Docker, Caddy), /api persiunčia API servisui
+#   absolutecinema-db   – PostgreSQL duomenų bazė
+# Kintamuosius su "sync: false" Render paklaus kuriant Blueprint (žr. README 10 skyrių).
+
+services:
+  - type: web
+    name: absolutecinema-api
+    runtime: docker
+    plan: free
+    region: frankfurt
+    rootDir: backend
+    dockerContext: ./backend
+    dockerfilePath: ./backend/Dockerfile
+    healthCheckPath: /up
+    envVars:
+      - key: APP_KEY                 # php artisan key:generate --show
+        sync: false
+      - key: APP_URL                 # svetainės adresas, pvz. https://absolutecinema.onrender.com
+        sync: false
+      - key: JWT_SECRET              # atsitiktinė reikšmė, kuria pasirašomi JWT žetonai
+        generateValue: true
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DB_URL                  # vidinis (privataus tinklo) DB adresas
+        fromDatabase:
+          name: absolutecinema-db
+          property: connectionString
+      - key: FORCE_HTTPS
+        value: "true"
+      - key: JWT_COOKIE_SECURE
+        value: "true"
+
+  - type: web
+    name: absolutecinema
+    runtime: docker
+    plan: free
+    region: frankfurt
+    rootDir: frontend
+    dockerContext: ./frontend
+    dockerfilePath: ./frontend/Dockerfile
+    envVars:
+      - key: API_UPSTREAM            # API serviso adresas, pvz. https://absolutecinema-api.onrender.com
+        sync: false
+
+databases:
+  - name: absolutecinema-db
+    plan: free
+    region: frankfurt
+    databaseName: absolutecinema
+    user: absolutecinema
+    postgresMajorVersion: "17"
+    ipAllowList: []                  # iš interneto nepasiekiama – jungiasi tik API servisas

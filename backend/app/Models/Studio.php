@@ -47,7 +47,7 @@ class Studio extends Model
     public function scopeFilter(Builder $query, array $filters): void
     {
         $query
-            ->when($filters['search'] ?? null, fn ($q, $search) => $q->where('name', 'like', "%{$search}%"))
+            ->when($filters['search'] ?? null, fn ($q, $search) => $q->whereLike('name', "%{$search}%"))
             ->when($filters['country'] ?? null, fn ($q, $country) => $q->where('country', $country))
             ->when($filters['founded_from'] ?? null, fn ($q, $year) => $q->where('founded_year', '>=', $year))
             ->when($filters['founded_to'] ?? null, fn ($q, $year) => $q->where('founded_year', '<=', $year));
@@ -65,6 +65,7 @@ class Studio extends Model
             default => 'name',
         };
 
-        $query->orderBy($column, $direction)->orderBy('id');
+        // "nulls last" – studijos be įvertinimų visada sąrašo gale (PostgreSQL be šito jas dėtų į priekį)
+        $query->orderByRaw("{$column} {$direction} nulls last")->orderBy('id');
     }
 }

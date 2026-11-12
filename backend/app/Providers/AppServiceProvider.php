@@ -23,7 +23,7 @@ class AppServiceProvider extends ServiceProvider
         // todėl be jo naudotojas visada laikomas svečiu (null)
         Auth::viaRequest('jwt', fn () => null);
 
-        // Produkcijoje (Railway) HTTPS baigiasi proxy serveryje – nuorodos visada turi būti https://
+        // Produkcijoje (Render) HTTPS baigiasi proxy serveryje – nuorodos visada turi būti https://
         if (config('app.force_https')) {
             URL::forceScheme('https');
         }

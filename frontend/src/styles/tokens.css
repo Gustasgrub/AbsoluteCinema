@@ -1,30 +1,35 @@
 /*
- * Dizaino kintamieji: spalvų paletė, šriftai, tarpai.
- * Idėja – kino festivalio programėlė: šiltas popierius, juodas rašalas,
- * signalinė raudona (uždanga) ir gintarinės švieslentės lemputės.
+ * Dizaino kintamieji: spalvos, šriftai, tarpai.
+ * Stilius primena IMDb: juodas fonas, tamsiai pilkos kortelės,
+ * geltonas akcentas (logotipas, žvaigždutės, pagrindiniai mygtukai) ir mėlynos nuorodos.
  */
 :root {
-  /* Spalvos */
-  --paper: #f2eadc;
-  --paper-2: #e9dfcc;
-  --paper-3: #d9ccb3;
-  --cream: #fbf6ec;
-  --ink: #17130e;
-  --ink-2: #3b332a;
-  --ink-3: #6b5f51;
-  --red: #d7372a;
-  --red-deep: #9e2a20;
-  --amber: #f2a93b;
-  --amber-soft: #f7d797;
-  --teal: #1f6f68;
+  /* Fonai – nuo tamsiausio iki šviesiausio */
+  --bg: #000000;          /* puslapio fonas */
+  --bg-2: #121212;        /* antraštė, poraštė, "hero" juostos */
+  --surface: #1a1a1a;     /* kortelės */
+  --surface-2: #232323;   /* kortelė užvedus pelę, įvesties laukai */
+  --surface-3: #2c2c2c;   /* pilki mygtukai */
+  --border: #333333;
+  --border-2: #4a4a4a;
+
+  /* Tekstas */
+  --text: #ffffff;
+  --text-2: rgba(255, 255, 255, 0.72);
+  --text-3: rgba(255, 255, 255, 0.5);
+
+  /* Akcentai */
+  --yellow: #f5c518;
+  --yellow-hover: #e3b616;
+  --blue: #5799ef;
+  --red: #f15b4b;
+  --green: #4cc27a;
 
   /* Šriftai (įtraukti per Google Fonts index.html faile) */
-  --font-display: 'Big Shoulders Display', 'Arial Narrow', 'Roboto Condensed', sans-serif;
-  --font-body: 'Instrument Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --font-serif: 'Instrument Serif', Georgia, 'Times New Roman', serif;
-  --font-mono: 'IBM Plex Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  --font: 'Roboto', system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+  --font-poster: 'Big Shoulders Display', 'Arial Narrow', sans-serif;
 
-  /* Tarpai – viskas lygiuojama į 8px tinklelį */
+  /* Tarpai – viskas lygiuojama į 4px / 8px tinklelį */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -33,15 +38,13 @@
   --space-6: 32px;
   --space-7: 48px;
   --space-8: 64px;
-  --space-9: 96px;
 
-  /* Rėmeliai ir šešėliai – "atspausdinto" plakato stilius (be suliejimo) */
-  --line: 2px solid var(--ink);
-  --shadow: 4px 4px 0 var(--ink);
-  --shadow-lg: 8px 8px 0 var(--ink);
   --radius: 4px;
+  --radius-lg: 12px;
+  --shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
 
-  --container: 1200px;
+  --container: 1280px;
   --gutter: 24px;
+  --header-height: 56px;
   --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
 }

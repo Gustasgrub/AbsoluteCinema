@@ -41,10 +41,6 @@
       "value": ""
     },
     {
-      "key": "studioEtag",
-      "value": ""
-    },
-    {
       "key": "newEmail",
       "value": ""
     },
@@ -53,15 +49,7 @@
       "value": ""
     },
     {
-      "key": "newUserId",
-      "value": ""
-    },
-    {
       "key": "sneakyEmail",
-      "value": ""
-    },
-    {
-      "key": "sneakyUserId",
       "value": ""
     },
     {
@@ -69,15 +57,11 @@
       "value": ""
     },
     {
-      "key": "twoFactorSecret",
+      "key": "newUserId",
       "value": ""
     },
     {
-      "key": "twoFactorToken",
-      "value": ""
-    },
-    {
-      "key": "totpCode",
+      "key": "sneakyUserId",
       "value": ""
     }
   ],
@@ -303,36 +287,7 @@
                   "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
                   "const body = pm.response.json();",
                   "pm.test(\"same studio\", () => pm.expect(body.data.id).to.eql(pm.collectionVariables.get(\"studioId\")));",
-                  "pm.test(\"guest sees no update link\", () => pm.expect(body.data._links).to.not.have.property(\"update\"));",
-                  "pm.test(\"ETag header\", () => pm.response.to.have.header(\"ETag\"));",
-                  "pm.collectionVariables.set(\"studioEtag\", pm.response.headers.get(\"ETag\"));"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Get studio again with If-None-Match → 304",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "If-None-Match",
-                "value": "{{studioEtag}}"
-              }
-            ],
-            "url": "{{baseUrl}}/studios/{{studioId}}",
-            "auth": {
-              "type": "noauth"
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"304 Not Modified\", () => pm.response.to.have.status(304));"
+                  "pm.test(\"guest sees no update link\", () => pm.expect(body.data._links).to.not.have.property(\"update\"));"
                 ]
               }
             }
@@ -580,30 +535,6 @@
               }
             }
           ]
-        },
-        {
-          "name": "Catalog: all movies filtered (genre, years, rating) → 200",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": "{{baseUrl}}/movies?genre=sci-fi&year_from=1990&year_to=2025&min_rating=8&sort=-rating",
-            "auth": {
-              "type": "noauth"
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
-                  "const body = pm.response.json();",
-                  "pm.test(\"all sci-fi with rating ≥ 8\", () => body.data.forEach(m => { pm.expect(m.genre).to.eql(\"sci-fi\"); pm.expect(m.average_rating).to.be.at.least(8); }));"
-                ]
-              }
-            }
-          ]
         }
       ]
     },
@@ -777,7 +708,7 @@
       ]
     },
     {
-      "name": "4. Dashboard, profiles, users",
+      "name": "4. Dashboard and profiles",
       "description": "Composite resources built from several entities.",
       "item": [
         {
@@ -805,7 +736,7 @@
           ]
         },
         {
-          "name": "User profile (User + Review + Movie + Studio) → 200",
+          "name": "User profile → 200",
           "request": {
             "method": "GET",
             "header": [],
@@ -822,7 +753,7 @@
                 "exec": [
                   "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
                   "const body = pm.response.json();",
-                  "pm.test(\"profile stats\", () => { pm.expect(body.data.stats.reviews_count).to.be.above(0); pm.expect(body.data.stats.rating_distribution).to.have.property(\"10\"); });",
+                  "pm.test(\"profile with review count\", () => pm.expect(body.data.reviews_count).to.be.above(0));",
                   "pm.test(\"email is private\", () => pm.expect(body.data).to.not.have.property(\"email\"));"
                 ]
               }
@@ -848,37 +779,6 @@
                   "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
                   "const body = pm.response.json();",
                   "pm.test(\"5 per page\", () => pm.expect(body.data.length).to.eql(5));"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "List users (admin) → 200",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": "{{baseUrl}}/users?role=member",
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{adminToken}}",
-                  "type": "string"
-                }
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
-                  "const body = pm.response.json();",
-                  "pm.test(\"members only\", () => body.data.forEach(u => pm.expect(u.role).to.eql(\"member\")));"
                 ]
               }
             }
@@ -925,8 +825,8 @@
                   "pm.test(\"access token returned\", () => pm.expect(body.access_token).to.be.a(\"string\"));",
                   "pm.collectionVariables.set(\"newUserToken\", body.access_token);",
                   "pm.test(\"new users are members\", () => pm.expect(body.user.role).to.eql(\"member\"));",
-                  "pm.test(\"refresh cookie is HttpOnly\", () => pm.expect(pm.response.headers.get(\"Set-Cookie\")).to.match(/httponly/i));",
-                  "pm.collectionVariables.set(\"newUserId\", body.user.id);"
+                  "pm.collectionVariables.set(\"newUserId\", body.user.id);",
+                  "pm.test(\"refresh cookie is HttpOnly\", () => pm.expect(pm.response.headers.get(\"Set-Cookie\")).to.match(/httponly/i));"
                 ]
               }
             },
@@ -973,8 +873,8 @@
                 "exec": [
                   "pm.test(\"201 Created\", () => pm.response.to.have.status(201));",
                   "const body = pm.response.json();",
-                  "pm.test(\"still a member\", () => pm.expect(body.user.role).to.eql(\"member\"));",
-                  "pm.collectionVariables.set(\"sneakyUserId\", body.user.id);"
+                  "pm.collectionVariables.set(\"sneakyUserId\", body.user.id);",
+                  "pm.test(\"still a member\", () => pm.expect(body.user.role).to.eql(\"member\"));"
                 ]
               }
             },
@@ -984,37 +884,6 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.collectionVariables.set(\"sneakyEmail\", `sneaky.${Date.now()}@absolutecinema.test`);"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Me → 200",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": "{{baseUrl}}/auth/me",
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{newUserToken}}",
-                  "type": "string"
-                }
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
-                  "const body = pm.response.json();",
-                  "pm.test(\"own email visible\", () => pm.expect(body.data.email).to.eql(pm.collectionVariables.get(\"newEmail\")));"
                 ]
               }
             }
@@ -1077,9 +946,9 @@
         {
           "name": "Old access token after logout → 401",
           "request": {
-            "method": "GET",
+            "method": "POST",
             "header": [],
-            "url": "{{baseUrl}}/auth/me",
+            "url": "{{baseUrl}}/auth/logout",
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -1132,365 +1001,7 @@
       ]
     },
     {
-      "name": "6. Two-factor authentication (bonus)",
-      "description": "TOTP 2FA: enable → confirm → login needs a code → disable.",
-      "item": [
-        {
-          "name": "Login new user → 200",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{baseUrl}}/auth/login",
-            "auth": {
-              "type": "noauth"
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"{{newEmail}}\",\n  \"password\": \"Secret123\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
-                  "const body = pm.response.json();",
-                  "pm.test(\"access token returned\", () => pm.expect(body.access_token).to.be.a(\"string\"));",
-                  "pm.collectionVariables.set(\"newUserToken\", body.access_token);"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Start 2FA setup → 200",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": "{{baseUrl}}/auth/two-factor",
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{newUserToken}}",
-                  "type": "string"
-                }
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
-                  "const body = pm.response.json();",
-                  "pm.test(\"otpauth url\", () => pm.expect(body.data.otpauth_url).to.match(/^otpauth:\\/\\/totp\\//));",
-                  "pm.collectionVariables.set(\"twoFactorSecret\", body.data.secret);"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Confirm 2FA with wrong code → 422",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{baseUrl}}/auth/two-factor/confirm",
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{newUserToken}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"code\": \"000000\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"422 \", () => pm.response.to.have.status(422));",
-                  "const body = pm.response.json();",
-                  "pm.test(\"Problem Details body\", () => { pm.expect(body.status).to.eql(422); pm.expect(body.detail).to.be.a(\"string\"); });"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Confirm 2FA with code → 200",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{baseUrl}}/auth/two-factor/confirm",
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{newUserToken}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"code\": \"{{totpCode}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
-                  "const body = pm.response.json();",
-                  "pm.test(\"enabled\", () => pm.expect(body.data.two_factor_enabled).to.eql(true));"
-                ]
-              }
-            },
-            {
-              "listen": "prerequest",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "// TOTP (RFC 6238) code from the secret – the same thing Google Authenticator does",
-                  "const secret = pm.collectionVariables.get(\"twoFactorSecret\");",
-                  "if (secret) {",
-                  "  const CryptoJS = require(\"crypto-js\");",
-                  "  const alphabet = \"ABCDEFGHIJKLMNOPQRSTUVWXYZ234567\";",
-                  "  let bits = \"\";",
-                  "  for (const c of secret.toUpperCase()) bits += alphabet.indexOf(c).toString(2).padStart(5, \"0\");",
-                  "  let keyHex = \"\";",
-                  "  for (let i = 0; i + 8 <= bits.length; i += 8) keyHex += parseInt(bits.substr(i, 8), 2).toString(16).padStart(2, \"0\");",
-                  "  const counter = Math.floor(Date.now() / 1000 / 30).toString(16).padStart(16, \"0\");",
-                  "  const hmac = CryptoJS.HmacSHA1(CryptoJS.enc.Hex.parse(counter), CryptoJS.enc.Hex.parse(keyHex)).toString();",
-                  "  const offset = parseInt(hmac.substr(-1), 16);",
-                  "  const code = (parseInt(hmac.substr(offset * 2, 8), 16) & 0x7fffffff) % 1000000;",
-                  "  pm.collectionVariables.set(\"totpCode\", String(code).padStart(6, \"0\"));",
-                  "}"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Login now asks for a code → 200",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{baseUrl}}/auth/login",
-            "auth": {
-              "type": "noauth"
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"{{newEmail}}\",\n  \"password\": \"Secret123\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
-                  "const body = pm.response.json();",
-                  "pm.test(\"2FA required, no tokens yet\", () => { pm.expect(body.two_factor_required).to.eql(true); pm.expect(body).to.not.have.property(\"access_token\"); });",
-                  "pm.collectionVariables.set(\"twoFactorToken\", body.two_factor_token);"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "2FA challenge → 200 (tokens)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{baseUrl}}/auth/two-factor/challenge",
-            "auth": {
-              "type": "noauth"
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"two_factor_token\": \"{{twoFactorToken}}\",\n  \"code\": \"{{totpCode}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
-                  "const body = pm.response.json();",
-                  "pm.test(\"access token returned\", () => pm.expect(body.access_token).to.be.a(\"string\"));",
-                  "pm.collectionVariables.set(\"newUserToken\", body.access_token);"
-                ]
-              }
-            },
-            {
-              "listen": "prerequest",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "// TOTP (RFC 6238) code from the secret – the same thing Google Authenticator does",
-                  "const secret = pm.collectionVariables.get(\"twoFactorSecret\");",
-                  "if (secret) {",
-                  "  const CryptoJS = require(\"crypto-js\");",
-                  "  const alphabet = \"ABCDEFGHIJKLMNOPQRSTUVWXYZ234567\";",
-                  "  let bits = \"\";",
-                  "  for (const c of secret.toUpperCase()) bits += alphabet.indexOf(c).toString(2).padStart(5, \"0\");",
-                  "  let keyHex = \"\";",
-                  "  for (let i = 0; i + 8 <= bits.length; i += 8) keyHex += parseInt(bits.substr(i, 8), 2).toString(16).padStart(2, \"0\");",
-                  "  const counter = Math.floor(Date.now() / 1000 / 30).toString(16).padStart(16, \"0\");",
-                  "  const hmac = CryptoJS.HmacSHA1(CryptoJS.enc.Hex.parse(counter), CryptoJS.enc.Hex.parse(keyHex)).toString();",
-                  "  const offset = parseInt(hmac.substr(-1), 16);",
-                  "  const code = (parseInt(hmac.substr(offset * 2, 8), 16) & 0x7fffffff) % 1000000;",
-                  "  pm.collectionVariables.set(\"totpCode\", String(code).padStart(6, \"0\"));",
-                  "}"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Disable 2FA → 204",
-          "request": {
-            "method": "DELETE",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{baseUrl}}/auth/two-factor",
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{newUserToken}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"code\": \"{{totpCode}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"204 No Content\", () => pm.response.to.have.status(204));",
-                  "pm.collectionVariables.unset(\"twoFactorSecret\");"
-                ]
-              }
-            },
-            {
-              "listen": "prerequest",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "// TOTP (RFC 6238) code from the secret – the same thing Google Authenticator does",
-                  "const secret = pm.collectionVariables.get(\"twoFactorSecret\");",
-                  "if (secret) {",
-                  "  const CryptoJS = require(\"crypto-js\");",
-                  "  const alphabet = \"ABCDEFGHIJKLMNOPQRSTUVWXYZ234567\";",
-                  "  let bits = \"\";",
-                  "  for (const c of secret.toUpperCase()) bits += alphabet.indexOf(c).toString(2).padStart(5, \"0\");",
-                  "  let keyHex = \"\";",
-                  "  for (let i = 0; i + 8 <= bits.length; i += 8) keyHex += parseInt(bits.substr(i, 8), 2).toString(16).padStart(2, \"0\");",
-                  "  const counter = Math.floor(Date.now() / 1000 / 30).toString(16).padStart(16, \"0\");",
-                  "  const hmac = CryptoJS.HmacSHA1(CryptoJS.enc.Hex.parse(counter), CryptoJS.enc.Hex.parse(keyHex)).toString();",
-                  "  const offset = parseInt(hmac.substr(-1), 16);",
-                  "  const code = (parseInt(hmac.substr(offset * 2, 8), 16) & 0x7fffffff) % 1000000;",
-                  "  pm.collectionVariables.set(\"totpCode\", String(code).padStart(6, \"0\"));",
-                  "}"
-                ]
-              }
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "name": "7. Error cases – correct status codes",
+      "name": "6. Error cases – correct status codes",
       "description": "Each request deliberately triggers an error.",
       "item": [
         {
@@ -1664,7 +1175,7 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": "{{baseUrl}}/movies?page=abc&genre=opera&per_page=500",
+            "url": "{{baseUrl}}/studios/{{studioId}}/movies?page=abc&genre=opera&per_page=500",
             "auth": {
               "type": "noauth"
             }
@@ -1907,16 +1418,16 @@
           ]
         },
         {
-          "name": "Forged token → 401",
+          "name": "Forged admin token → 401",
           "request": {
-            "method": "GET",
+            "method": "POST",
             "header": [
               {
                 "key": "Authorization",
                 "value": "Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIiwicm9sZSI6ImFkbWluIn0.forged-signature"
               }
             ],
-            "url": "{{baseUrl}}/auth/me",
+            "url": "{{baseUrl}}/studios",
             "auth": {
               "type": "noauth"
             }
@@ -2147,83 +1658,6 @@
           ]
         },
         {
-          "name": "Member lists all users → 403",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": "{{baseUrl}}/users",
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{memberToken}}",
-                  "type": "string"
-                }
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"403 \", () => pm.response.to.have.status(403));",
-                  "const body = pm.response.json();",
-                  "pm.test(\"Problem Details body\", () => { pm.expect(body.status).to.eql(403); pm.expect(body.detail).to.be.a(\"string\"); });"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Member changes own role → 422",
-          "request": {
-            "method": "PATCH",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{baseUrl}}/users/{{memberId}}",
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{memberToken}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"role\": \"admin\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"422 \", () => pm.response.to.have.status(422));",
-                  "const body = pm.response.json();",
-                  "pm.test(\"Problem Details body\", () => { pm.expect(body.status).to.eql(422); pm.expect(body.detail).to.be.a(\"string\"); });",
-                  "pm.test(\"role prohibited\", () => pm.expect(body.errors).to.have.property(\"role\"));"
-                ]
-              }
-            }
-          ]
-        },
-        {
           "name": "Wrong password → 401",
           "request": {
             "method": "POST",
@@ -2264,7 +1698,7 @@
       ]
     },
     {
-      "name": "8. Delete – clean up test data",
+      "name": "7. Delete – clean up test data",
       "description": "Deletes everything created above, so the collection can be run again.",
       "item": [
         {

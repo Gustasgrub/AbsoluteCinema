@@ -14,9 +14,6 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->string('password');                        // bcrypt hash
             $table->string('role', 20)->default('member');     // member | admin (svečias – neprisijungęs)
-            $table->text('bio')->nullable();
-            $table->text('two_factor_secret')->nullable();      // užšifruotas 2FA (TOTP) raktas
-            $table->timestamp('two_factor_enabled_at')->nullable();
             $table->timestamps();
         });
     }

@@ -3,10 +3,10 @@ import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
 /*
- * Modalinis langas su "klaketės" (clapperboard) antrašte.
+ * Modalinis langas: geltonas mažas užrašas (kicker), pavadinimas ir turinys.
  * Uždaromas: Esc klavišu, paspaudus už lango ribų arba X mygtuku.
  */
-export default function Modal({ open, title, kicker = 'Scene', onClose, children, size = 'md' }) {
+export default function Modal({ open, title, kicker, onClose, children, size = 'md' }) {
   const dialogRef = useRef(null);
   const onCloseRef = useRef(onClose);
 
@@ -38,13 +38,9 @@ export default function Modal({ open, title, kicker = 'Scene', onClose, children
   return createPortal(
     <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
       <div ref={dialogRef} className={`modal modal--${size}`} role="dialog" aria-modal="true" aria-labelledby="modal-title">
-        <div className="clapper" aria-hidden="true">
-          <span className="clapper__stick" />
-          <span className="clapper__base" />
-        </div>
         <div className="modal__head">
           <div>
-            <p className="eyebrow">{kicker}</p>
+            {kicker && <p className="eyebrow">{kicker}</p>}
             <h2 id="modal-title" className="modal__title">{title}</h2>
           </div>
           <button type="button" className="modal__close" onClick={onClose} aria-label="Close">

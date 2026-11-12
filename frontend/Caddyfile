@@ -2,7 +2,7 @@
 	admin off
 	auto_https off
 	servers {
-		# Railway (ar kitas proxy priekyje) perduoda tikrąjį protokolą X-Forwarded-Proto antrašte
+		# Render (ar kitas proxy priekyje) perduoda tikrąjį protokolą X-Forwarded-Proto antrašte
 		trusted_proxies static private_ranges
 	}
 }
@@ -13,7 +13,12 @@
 	# API, jo dokumentacija ir sveikatos patikra – persiunčiama Laravel backend'ui
 	@backend path /api/* /docs /openapi.yaml /up
 	handle @backend {
-		reverse_proxy {$API_UPSTREAM}
+		reverse_proxy {$API_UPSTREAM} {
+			# Render API servisą randa pagal Host antraštę, todėl siunčiame jo paties adresą,
+			# o svetainės adresą perduodame X-Forwarded-Host (Laravel pagal jį kuria nuorodas)
+			header_up Host {upstream_hostport}
+			header_up X-Forwarded-Host {host}
+		}
 	}
 
 	# Visa kita – React programa. Nežinomi adresai (pvz. /studios/1) grąžina index.html

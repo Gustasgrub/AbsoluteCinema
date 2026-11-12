@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
-import { ArrowLeft, ExternalLink, MapPin, Pencil, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, ExternalLink, MapPin, Pencil, Plus, Star, Trash2 } from 'lucide-react';
 import { api } from '../api/client.js';
 import { useApi } from '../hooks/useApi.js';
 import ConfirmDialog from '../components/ConfirmDialog.jsx';
@@ -8,15 +8,15 @@ import Loader from '../components/Loader.jsx';
 import Modal from '../components/Modal.jsx';
 import MovieCard from '../components/MovieCard.jsx';
 import Pagination from '../components/Pagination.jsx';
-import RatingBadge from '../components/RatingBadge.jsx';
 import SectionHeading from '../components/SectionHeading.jsx';
 import MovieForm from '../components/forms/MovieForm.jsx';
 import StudioForm from '../components/forms/StudioForm.jsx';
 import { EmptyState, ErrorState } from '../components/States.jsx';
 import { useToast } from '../components/Toast.jsx';
-import { GENRES, MOVIE_SORTS } from '../utils/constants.js';
-import { genreLabel, movieUrl, toQuery } from '../utils/format.js';
+import { DECADES, GENRES, MOVIE_SORTS } from '../utils/constants.js';
+import { genreLabel, initials, movieUrl, toQuery } from '../utils/format.js';
 
+// Studijos puslapis: informacija viršuje + jos filmų sąrašas ("Filmography") su filtrais
 export default function StudioPage() {
   const { studioId } = useParams();
   const navigate = useNavigate();
@@ -30,9 +30,16 @@ export default function StudioPage() {
   const filters = {
     type: params.get('type') ?? '',
     genre: params.get('genre') ?? '',
+    year_from: params.get('year_from') ?? '',
+    year_to: params.get('year_to') ?? '',
     sort: params.get('sort') ?? '-release_date',
     page: params.get('page') ?? '',
   };
+
+  // Išleidimo metų filtras pagal dešimtmetį: pasirinkus "1990s" siunčiama ?year_from=1990&year_to=1999
+  function chooseDecade(decade) {
+    updateFilters({ year_from: decade, year_to: decade ? String(Number(decade) + 9) : '' });
+  }
   const moviesRequest = useApi(`/studios/${studioId}/movies${toQuery(filters)}`);
   const movies = moviesRequest.data;
 
@@ -57,48 +64,62 @@ export default function StudioPage() {
   return (
     <>
       <section className="studio-hero" style={{ '--brand': studio.brand_color }}>
-        <div className="container studio-hero__grid">
-          <div>
-            <Link to="/studios" className="back-link"><ArrowLeft aria-hidden="true" /> All studios</Link>
-            <p className="eyebrow eyebrow--light">Est. {studio.founded_year} · {studio.country}</p>
-            <h1 className="studio-hero__title">{studio.name}</h1>
-            <p className="studio-hero__desc">{studio.description}</p>
-            <p className="studio-hero__meta">
-              {studio.headquarters && <span><MapPin aria-hidden="true" /> {studio.headquarters}</span>}
-              {studio.website && (
-                <a href={studio.website} target="_blank" rel="noreferrer">
-                  <ExternalLink aria-hidden="true" /> {studio.website.replace(/^https?:\/\//, '')}
-                </a>
-              )}
-            </p>
-          </div>
+        <div className="container">
+          <Link to="/studios" className="back-link"><ArrowLeft aria-hidden="true" /> All studios</Link>
 
-          <aside className="studio-hero__stats">
-            <RatingBadge value={studio.average_rating} count={studio.reviews_count} size="lg" />
-            <dl>
-              <div><dt>Titles</dt><dd>{studio.movies_count}</dd></div>
-              <div><dt>Reviews</dt><dd>{studio.reviews_count}</dd></div>
-            </dl>
-            {(studio._links.update || studio._links.delete) && (
-              <div className="studio-hero__admin">
-                {studio._links.update && (
-                  <button type="button" className="btn btn--on-dark" onClick={() => setModal('edit')}>
-                    <Pencil aria-hidden="true" /> Edit studio
-                  </button>
+          <div className="studio-hero__grid">
+            <span className="studio-hero__monogram" aria-hidden="true">{initials(studio.name)}</span>
+
+            <div className="studio-hero__info">
+              <h1 className="studio-hero__title">{studio.name}</h1>
+              <ul className="title-hero__facts">
+                <li>Studio</li>
+                <li>Est. {studio.founded_year}</li>
+                <li>{studio.country}</li>
+              </ul>
+              <p className="studio-hero__desc">{studio.description}</p>
+              <p className="studio-hero__meta">
+                {studio.headquarters && <span><MapPin aria-hidden="true" /> {studio.headquarters}</span>}
+                {studio.website && (
+                  <a href={studio.website} target="_blank" rel="noreferrer" className="text-link">
+                    <ExternalLink aria-hidden="true" /> {studio.website.replace(/^https?:\/\//, '')}
+                  </a>
                 )}
-                {studio._links.delete && (
-                  <button type="button" className="btn btn--on-dark btn--danger-outline" onClick={() => setModal('delete')}>
-                    <Trash2 aria-hidden="true" /> Delete
-                  </button>
-                )}
+              </p>
+            </div>
+
+            <aside className="studio-hero__side">
+              <div className="rating-block">
+                <p className="rating-block__label">Average AC rating</p>
+                <span className="rating-block__value">
+                  <Star aria-hidden="true" />
+                  <span>
+                    <strong>{studio.average_rating ?? '—'}</strong>/10
+                    <small>{studio.reviews_count} reviews · {studio.movies_count} titles</small>
+                  </span>
+                </span>
               </div>
-            )}
-          </aside>
+              {(studio._links.update || studio._links.delete) && (
+                <div className="title-hero__admin">
+                  {studio._links.update && (
+                    <button type="button" className="btn btn--gray" onClick={() => setModal('edit')}>
+                      <Pencil aria-hidden="true" /> Edit studio
+                    </button>
+                  )}
+                  {studio._links.delete && (
+                    <button type="button" className="btn btn--gray btn--danger-text" onClick={() => setModal('delete')}>
+                      <Trash2 aria-hidden="true" /> Delete
+                    </button>
+                  )}
+                </div>
+              )}
+            </aside>
+          </div>
         </div>
       </section>
 
       <section className="section container">
-        <SectionHeading reel="01" kicker={movies ? `${movies.meta.total} titles` : 'Titles'} title="Filmography">
+        <SectionHeading title="Filmography" count={movies?.meta.total}>
           {studio._links.create_movie && (
             <button type="button" className="btn btn--primary" onClick={() => setModal('add-movie')}>
               <Plus aria-hidden="true" /> Add title
@@ -123,6 +144,13 @@ export default function StudioPage() {
             </select>
           </label>
           <label className="filter-bar__field">
+            <span>Released</span>
+            <select value={filters.year_from} onChange={(event) => chooseDecade(event.target.value)}>
+              <option value="">Any year</option>
+              {DECADES.map((decade) => <option key={decade} value={decade}>{decade}s</option>)}
+            </select>
+          </label>
+          <label className="filter-bar__field">
             <span>Sort</span>
             <select value={filters.sort} onChange={(event) => updateFilters({ sort: event.target.value })}>
               {MOVIE_SORTS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
@@ -141,7 +169,7 @@ export default function StudioPage() {
         <Pagination meta={movies?.meta} onPage={(page) => updateFilters({ page })} />
       </section>
 
-      <Modal open={modal === 'edit'} title={`Edit ${studio.name}`} kicker="Re-shoot" onClose={() => setModal(null)} size="lg">
+      <Modal open={modal === 'edit'} title={`Edit ${studio.name}`} kicker="Admin" onClose={() => setModal(null)} size="lg">
         <StudioForm
           studio={studio}
           onCancel={() => setModal(null)}
@@ -152,7 +180,7 @@ export default function StudioPage() {
         />
       </Modal>
 
-      <Modal open={modal === 'add-movie'} title={`New title for ${studio.name}`} kicker="Casting call" onClose={() => setModal(null)} size="xl">
+      <Modal open={modal === 'add-movie'} title={`New title for ${studio.name}`} kicker="Admin" onClose={() => setModal(null)} size="xl">
         <MovieForm
           studio={studio}
           onCancel={() => setModal(null)}
